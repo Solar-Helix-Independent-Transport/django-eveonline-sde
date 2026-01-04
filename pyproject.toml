@@ -1,0 +1,51 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+    "hatchling",
+]
+
+[project]
+name = "django-eve-sde"
+description = "Eve Online SDE Export in Django Model form"
+readme = "README.md"
+keywords = [
+    "allianceauth",
+    "eve online",
+]
+license = { file = "LICENSE" }
+authors = [
+    { name = "Aaron Kable", email = "aaronkable@gmail.com" },
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
+dynamic = [
+    "version",
+]
+dependencies = [
+    "allianceauth>=4.3.1,<5",
+]
+urls.Changelog = "https://github.com/Solar-Helix-Independent-Transport/django-eve-sde/blob/master/CHANGELOG.md"
+urls."Issue / Bug Reports" = "https://github.com/Solar-Helix-Independent-Transport/django-eve-sde/issues"
+
+[tool.hatch.version]
+path = "eve_sde/__init__.py"
+
+[tool.hatch.build]
+include = [
+    "/eve_sde",
+]

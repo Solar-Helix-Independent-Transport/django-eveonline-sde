@@ -424,7 +424,7 @@ class Planet(UniverseBase):
 
     @classmethod
     def from_jsonl(cls, json_data, system_names):
-        name = f"{system_names[json_data.get('solarSystemID')]["name"]} {to_roman_numeral(json_data.get('celestialIndex'))}"
+        name = f"{system_names[json_data.get('solarSystemID')]['name']} {to_roman_numeral(json_data.get('celestialIndex'))}"
         planet = cls(
             id=json_data.get("_key"),
             celestial_index=json_data.get("celestialIndex"),
@@ -534,7 +534,7 @@ class Moon(UniverseBase):
 
     @classmethod
     def from_jsonl(cls, json_data, planet_names):
-        name = f"{planet_names[json_data.get('orbitID')]["name"]} - Moon {json_data.get('orbitIndex')}"
+        name = f"{planet_names[json_data.get('orbitID')]['name']} - Moon {json_data.get('orbitIndex')}"
         moon = cls(
             id=json_data.get("_key"),
             celestial_index=json_data.get("celestialIndex"),

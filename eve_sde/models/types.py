@@ -102,7 +102,7 @@ class ItemGroup(TypeBase):
     # Model Fields
     anchorable = models.BooleanField(default=False)
     anchored = models.BooleanField(default=False)
-    category = models.ForeignKey(ItemCategory, on_delete=models.SET_NULL, null=True, default=None)
+    category = models.ForeignKey(ItemCategory, on_delete=models.SET_NULL, null=True, blank=True, default=None)
     fittable_non_singleton = models.BooleanField(default=False)
     icon_id = models.IntegerField(null=True, blank=True, default=None)
     published = models.BooleanField(default=False)
@@ -179,10 +179,10 @@ class ItemType(TypeBase):
     # Model Fields
     base_price = models.FloatField(null=True, blank=True, default=None)
     capacity = models.FloatField(null=True, blank=True, default=None)
-    description = models.TextField()  # _en
+    description = models.TextField(null=True, blank=True, default=None)  # _en
     faction_id_raw = models.IntegerField(null=True, blank=True, default=None)
     graphic_id = models.IntegerField(null=True, blank=True, default=None)
-    group = models.ForeignKey(ItemGroup, on_delete=models.SET_NULL, null=True, default=None)
+    group = models.ForeignKey(ItemGroup, on_delete=models.SET_NULL, null=True, blank=True, default=None)
     icon_id = models.IntegerField(null=True, blank=True, default=None)
     market_group_id_raw = models.IntegerField(null=True, blank=True, default=None)
     mass = models.FloatField(null=True, blank=True, default=None)

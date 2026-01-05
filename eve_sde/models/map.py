@@ -6,7 +6,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from .base import JSONModel
-from .utils import get_langs_for_field, lang_key, to_roman_numeral
+from .types import ItemType
+from .utils import get_langs_for_field, to_roman_numeral
 
 
 class UniverseBase(JSONModel):
@@ -82,7 +83,7 @@ class Region(UniverseBase):
         custom_names = False
 
     # Model Fields
-    description = models.TextField()  # _en
+    description = models.TextField(null=True, blank=True, default=None)  # _en
     faction_id_raw = models.IntegerField(null=True, blank=True, default=None)
     nebular_id_raw = models.IntegerField(null=True, blank=True, default=None)
     wormhole_class_id_raw = models.IntegerField(null=True, blank=True, default=None)
@@ -207,7 +208,7 @@ class SolarSystem(UniverseBase):
 
     # Model Fields
     border = models.BooleanField(null=True, blank=True, default=False)
-    constellation = models.ForeignKey(Constellation, on_delete=models.SET_NULL, null=True, default=None)
+    constellation = models.ForeignKey(Constellation, on_delete=models.SET_NULL, null=True, blank=True, default=None)
     corridor = models.BooleanField(null=True, blank=True, default=False)
     faction_id_raw = models.IntegerField(null=True, blank=True, default=None)
     fringe = models.BooleanField(null=True, blank=True, default=False)
@@ -216,10 +217,10 @@ class SolarSystem(UniverseBase):
     luminosity = models.FloatField(null=True, blank=True, default=None)
     radius = models.FloatField(null=True, blank=True, default=None)
     regional = models.BooleanField(null=True, blank=True, default=False)
-    security_class = models.CharField(max_length=5, null=True, default=None)
+    security_class = models.CharField(max_length=5, null=True, blank=True, default=None)
     security_status = models.FloatField(null=True, blank=True, default=None)
-    star_id_raw = models.IntegerField(null=True, default=None)
-    visual_effect = models.CharField(max_length=50, null=True, default=None)
+    star_id_raw = models.IntegerField(null=True, blank=True, default=None)
+    visual_effect = models.CharField(max_length=50, null=True, blank=True, default=None)
     wormhole_class_id_raw = models.IntegerField(null=True, blank=True, default=None)
 
     x_2d = models.FloatField(null=True, default=None, blank=True)
@@ -251,12 +252,26 @@ class Stargate(UniverseBase):
     destination = models.ForeignKey(
         SolarSystem,
         on_delete=models.CASCADE,
-        related_name="+"
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
     )
-    item_type_id_raw = models.IntegerField()
+    item_type = models.ForeignKey(
+        ItemType,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
     solar_system = models.ForeignKey(
         SolarSystem,
         on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
     )
 
     def __str__(self):
@@ -276,7 +291,7 @@ class Stargate(UniverseBase):
         return cls(
             id=json_data.get("_key"),
             destination_id=dst_id,
-            item_type_id_raw=json_data.get("typeID"),
+            item_type_id=json_data.get("typeID"),
             name=f"{system_names[src_id]} ≫ {system_names[dst_id]}",
             solar_system_id=src_id,
         )
@@ -330,21 +345,31 @@ class Planet(UniverseBase):
             ("orbit_id_raw", "orbitID"),
             ("radius", "radius"),
             ("solar_system_id", "solarSystemID"),
-            ("item_type_id_raw", "typeID"),
+            ("item_type_id", "typeID"),
             ("x", "position.x"),
             ("y", "position.y"),
             ("z", "position.z"),
         )
 
-    celestial_index = models.IntegerField()
-    item_type_id_raw = models.IntegerField()
-    orbit_id_raw = models.IntegerField()
-    orbit_index = models.IntegerField()
-    radius = models.IntegerField()
+    celestial_index = models.IntegerField(null=True, blank=True, default=None)
+    item_type = models.ForeignKey(
+        ItemType,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
+    orbit_id_raw = models.IntegerField(null=True, blank=True, default=None)
+    orbit_index = models.IntegerField(null=True, blank=True, default=None)
+    radius = models.IntegerField(null=True, blank=True, default=None)
     solar_system = models.ForeignKey(
         SolarSystem,
         on_delete=models.CASCADE,
-        related_name="planet"
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
     )
     # eve_type = models.ForeignKey(
     #     EveType, on_delete=models.SET_NULL, null=True, default=None)
@@ -354,10 +379,10 @@ class Planet(UniverseBase):
 
     @classmethod
     def name_lookup(cls):
-        _langs = get_langs_for_field("name")
+        # _langs = get_langs_for_field("name")
         return {
             s.get("id"): s for s in
-            SolarSystem.objects.all().values("id", "name", *_langs)
+            SolarSystem.objects.all().values("id", "name")  # , *_langs)
         }
 
     @classmethod
@@ -403,7 +428,7 @@ class Moon(UniverseBase):
         custom_names = True
         data_map = (
             ("celestial_index", "celestialIndex"),
-            ("item_type_id_raw", "typeID"),
+            ("item_type_id", "typeID"),
             ("orbit_id_raw", "orbitID"),
             ("orbit_index", "orbitIndex"),
             ("planet_id", "orbitID"),
@@ -414,23 +439,37 @@ class Moon(UniverseBase):
             ("z", "position.z"),
         )
 
-    celestial_index = models.IntegerField()
-    item_type_id_raw = models.IntegerField()
-    orbit_id_raw = models.IntegerField()
-    orbit_index = models.IntegerField()
-    planet = models.ForeignKey(Planet, on_delete=models.CASCADE)
-    radius = models.IntegerField()
-    solar_system = models.ForeignKey(SolarSystem, on_delete=models.CASCADE, related_name="moon")
+    celestial_index = models.IntegerField(null=True, blank=True, default=None)
+    item_type = models.ForeignKey(
+        ItemType,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
+    orbit_id_raw = models.IntegerField(null=True, blank=True, default=None)
+    orbit_index = models.IntegerField(null=True, blank=True, default=None)
+    planet = models.ForeignKey(Planet, on_delete=models.CASCADE, related_name="+", null=True, blank=True, default=None)
+    radius = models.IntegerField(null=True, blank=True, default=None)
+    solar_system = models.ForeignKey(
+        SolarSystem,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
 
     def __str__(self):
         return (self.name)
 
     @classmethod
     def name_lookup(cls):
-        _langs = get_langs_for_field("name")
+        # _langs = get_langs_for_field("name")
         return {
             s.get("id"): s for s in
-            Planet.objects.all().values("id", "name", *_langs)
+            Planet.objects.all().values("id", "name")  # , *_langs)
         }
 
     @classmethod

@@ -13,11 +13,11 @@ class NameTranslationOptions(TranslationOptions):
     fields = ('name', )
 
 
-translator.register(Region, NameAndDescriptionTranslationOptions)
-translator.register(Constellation, NameTranslationOptions)
-translator.register(SolarSystem, NameTranslationOptions)
-translator.register(Planet, NameTranslationOptions)
-translator.register(ItemCategory, NameTranslationOptions)
-translator.register(ItemGroup, NameTranslationOptions)
-translator.register(ItemType, NameAndDescriptionTranslationOptions)
+# translator.register(Region, NameAndDescriptionTranslationOptions)
+# translator.register(Constellation, NameTranslationOptions)
+# translator.register(SolarSystem, NameTranslationOptions)
+# translator.register(Planet, NameTranslationOptions)
+# translator.register(ItemCategory, NameTranslationOptions)
+# translator.register(ItemGroup, NameTranslationOptions)
+# translator.register(ItemType, NameAndDescriptionTranslationOptions)
 # translator.register(Moon, NameTranslationOptions)

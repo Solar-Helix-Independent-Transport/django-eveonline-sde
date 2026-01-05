@@ -10,16 +10,29 @@ from celery import chain, shared_task
 from allianceauth.services.tasks import QueueOnce
 
 # AA Example App
+from eve_sde.models import EveSDE
 from eve_sde.sde_tasks import (
     SDE_PARTS_TO_UPDATE,
+    check_sde_version,
     delete_sde_folder,
     download_extract_sde,
     process_section_of_sde,
+    set_sde_version,
 )
 
 logger = logging.getLogger(__name__)
 
 # What models and the order to load them
+
+
+@shared_task(
+    bind=True,
+    base=QueueOnce,
+)
+def check_for_sde_updates(self):
+    if not check_sde_version():
+        update_models_from_sde.delay()
+    EveSDE.get_solo().save()
 
 
 @shared_task(
@@ -62,4 +75,5 @@ def fetch_sde(self):
     base=QueueOnce,
 )
 def cleanup_sde(self):
+    set_sde_version()
     delete_sde_folder()

@@ -13,6 +13,6 @@ class Command(BaseCommand):
     help = "Load SDE"
 
     def handle(self, *args, **options):
-        # download_extract_sde()
-        process_from_sde()
-        # process_section_of_sde(2)
+        download_extract_sde()
+        # process_from_sde()
+        process_section_of_sde(3)

@@ -1,15 +1,20 @@
 # Standard Library
 import glob
+import json
 import logging
 import os
 import shutil
 import zipfile
+from datetime import datetime, timezone
 
 # Third Party
 import httpx
 
+# AA Example App
+from eve_sde.models import EveSDE
+
 from .models.map import Constellation, Moon, Planet, Region, SolarSystem, Stargate
-from .models.types import ItemCategory, ItemGroup, ItemType
+from .models.types import ItemCategory, ItemGroup, ItemType, ItemTypeMaterials
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +24,7 @@ SDE_PARTS_TO_UPDATE = [
     ItemCategory,
     ItemGroup,
     ItemType,
+    ItemTypeMaterials,
     # # Map
     Region,
     Constellation,
@@ -68,6 +74,23 @@ def delete_sde_folder():
     shutil.rmtree(SDE_FOLDER)
 
 
+def check_sde_version():
+    """
+    {"_key": "sde", "buildNumber": 3142455, "releaseDate": "2025-12-15T11:14:02Z"}
+    """
+    url = "https://developers.eveonline.com/static-data/tranquility/latest.jsonl"
+    data = httpx.get(url).json()
+
+    build_number = data.get("buildNumber")
+
+    current = EveSDE.get_solo()
+
+    if current.build_number != build_number:
+        return False
+
+    return True
+
+
 def download_extract_sde():
     download_file(
         SDE_URL,
@@ -102,3 +125,22 @@ def process_from_sde(start_from: int = 0):
         count += 1
 
     delete_sde_folder()
+
+
+def set_sde_version():
+    """
+    {"_key": "sde", "buildNumber": 3142455, "releaseDate": "2025-12-15T11:14:02Z"}
+    """
+    build = 0
+    release = datetime.now(tz=timezone.utc)
+
+    with open(f"{SDE_FOLDER}/_sde.jsonl") as json_file:
+        sde_data = json.loads(json_file.read())
+        build = sde_data.get("buildNumber", 0)
+        release = datetime.fromisoformat(sde_data.get("releaseDate"))
+
+    _o = EveSDE.get_solo()
+    _o.build_number = build
+    _o.release_date = release
+    _o.save()
+    logger.info(f"SDE Updated to Build:{build} from:{release}")

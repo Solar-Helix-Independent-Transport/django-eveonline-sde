@@ -1,0 +1,67 @@
+{% extends "allianceauth/base-bs5.html" %}
+
+{% load i18n %}
+
+{% block page_title %}
+    {% translate "Eve SDE Admin" %}
+{% endblock page_title %}
+
+{% block header_nav_brand %}
+    {% translate "EVE SDE Admin" %}
+{% endblock header_nav_brand %}
+
+{% block content %}
+    <div class="esde">
+        <h3 class="text-center">Global SDE State</h3>
+        <p class="text-center">Current Build: {{ global.build_number }}</p>
+        <p class="text-center">Current Release Date: {{ global.release_date }}</p>
+        <p class="text-center">Last Check: {{ global.last_check_date }}</p>
+
+        <table class="table table-striped w-100" id="esde-table">
+            <thead>
+                <tr>
+                    <th>{% translate "Section" %}</th>
+                    <th>{% translate "Build Number" %}</th>
+                    <th>{% translate "Last Updated" %}</th>
+                    <th>{% translate "Rows" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sections %}
+                    <tr>
+                        <td>
+                            {{ s.sde_section }}
+                        </td>
+                        <td>
+                            {{ s.build_number }}
+                        </td>
+                        <td>
+                            {{ s.last_update }}
+                        </td>
+                        <td>
+                            <span class="{% if s.total_lines == s.total_rows %}text-success{% else %}text-danger{% endif %}">{{ s.total_lines }}/{{ s.total_rows }}</span>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+{% endblock content %}
+
+{% block extra_javascript %}
+    {% include "bundles/datatables-js-bs5.html" %}
+    <script>
+        $(document).ready(function () {
+            $("#esde-table").DataTable({
+                order: [[0, "asc"]],
+                pageLength: 25,
+                responsive: true,
+            });
+        });
+    </script>
+{% endblock extra_javascript %}
+
+{% block extra_css %}
+    {% include "bundles/datatables-css-bs5.html" %}
+{% endblock extra_css %}

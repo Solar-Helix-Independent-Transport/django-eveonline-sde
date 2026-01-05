@@ -192,6 +192,81 @@ class ItemType(TypeBase):
     volume = models.FloatField(null=True, blank=True, default=None)
 
 
+class ItemTypeMaterials(JSONModel):
+    """
+    # Is Deleted and reloaded on updates. Don't F-Key to this model.
+    typeMaterials.jsonl
+        _key : int
+        materials : list
+            materialTypeID: int
+            quantity: int
+        randomizedMaterials : list
+            materialTypeID: int
+            quantityMax: int
+            quantityMin: int
+    """
+    # JsonL Params
+    class Import:
+        filename = "typeMaterials.jsonl"
+        lang_fields = False
+        data_map = (
+            ("item_type_id", "_key"),
+            ("material_item_type_id", "materialTypeID"),
+            ("quantity", "quantity"),
+            ("quantity_max", "quantityMax"),
+            ("quantity_min", "quantityMin"),
+        )
+        update_fields = False
+        custom_names = False
+
+    item_type = models.ForeignKey(
+        ItemType,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
+    material_item_type = models.ForeignKey(
+        ItemType,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
+    quantity = models.IntegerField(null=True, blank=True, default=None)
+
+    quantity_max = models.IntegerField(null=True, blank=True, default=None)
+    quantity_min = models.IntegerField(null=True, blank=True, default=None)
+
+    @classmethod
+    def from_jsonl(cls, json_data, name_lookup=False):
+        _out = []
+        _key = {"_key": json_data.get("_key")}
+
+        for ob in json_data.get("materials", []):
+            _out.append(cls.map_to_model(ob | _key, name_lookup=name_lookup, pk=False))
+        for ob in json_data.get("randomizedMaterials", []):
+            _out.append(cls.map_to_model(ob | _key, name_lookup=name_lookup, pk=False))
+
+        return _out
+
+    @classmethod
+    def load_from_sde(cls, folder_name):
+        gate_qry = cls.objects.all()
+        if gate_qry.exists():
+            # speed and we are not caring about f-keys or signals on these models
+            gate_qry._raw_delete(gate_qry.db)
+        super().load_from_sde(folder_name)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return f"{self.name} ({self.id})"
+
+
 # class DogmaAttribute(TypeBase):
 #     """
 #     dogmaAttributes.jsonl
@@ -334,12 +409,3 @@ class ItemType(TypeBase):
 #         resistanceAttributeID : int
 #     """
 #     pass
-
-
-# class typeMaterials(TypeBase):
-#     """
-#     typeMaterials.jsonl
-#         _key : int
-#         materials : list
-#         randomizedMaterials : list
-#     """

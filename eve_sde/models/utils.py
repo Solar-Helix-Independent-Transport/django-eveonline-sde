@@ -56,8 +56,12 @@ def get_langs_for_field(field_name):
 
 
 def val_from_dict(key, dict):
-    ""
+    _k = key
+    _d = None
+    if isinstance(key, tuple):
+        _k = key[0]
+        _d = key[1]
     try:
-        return reduce(operator.getitem, key.split("."), dict)
+        return reduce(operator.getitem, _k.split("."), dict)
     except KeyError:
-        return None
+        return _d

@@ -15,7 +15,11 @@ logger = logging.getLogger(__name__)
 
 # What models and the order to load them
 SDE_PARTS_TO_UPDATE = [
-    # Map
+    # # Types
+    ItemCategory,
+    ItemGroup,
+    ItemType,
+    # # Map
     Region,
     Constellation,
     SolarSystem,
@@ -23,10 +27,6 @@ SDE_PARTS_TO_UPDATE = [
     Stargate,
     Planet,
     Moon,
-    # # Types
-    ItemCategory,
-    ItemGroup,
-    ItemType,
     # EveItemDogmaAttribute,
     # # Type Materials
     # InvTypeMaterials,

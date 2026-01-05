@@ -7,6 +7,7 @@ Create your models in here
 from django.db import models
 
 from .map import *
+from .types import *
 
 
 class EveSDE(models.Model):

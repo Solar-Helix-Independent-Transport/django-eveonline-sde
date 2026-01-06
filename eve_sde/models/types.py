@@ -29,14 +29,7 @@ class ItemCategory(TypeBase):
     categories.jsonl
         _key : int
         name : dict
-            name.de : str
-            name.en : str
-            name.es : str
-            name.fr : str
-            name.ja : str
-            name.ko : str
-            name.ru : str
-            name.zh : str
+            ...
         published : bool
         iconID : int
     """
@@ -66,14 +59,7 @@ class ItemGroup(TypeBase):
         categoryID : int
         fittableNonSingleton : bool
         name : dict
-            name.de : str
-            name.en : str
-            name.es : str
-            name.fr : str
-            name.ja : str
-            name.ko : str
-            name.ru : str
-            name.zh : str
+            ...
         published : bool
         useBasePrice : bool
         iconID : int
@@ -112,27 +98,13 @@ class ItemType(TypeBase):
         groupID : int
         mass : float
         name : dict
-            name.de : str
-            name.en : str
-            name.es : str
-            name.fr : str
-            name.ja : str
-            name.ko : str
-            name.ru : str
-            name.zh : str
+            ...
         portionSize : int
         published : bool
         volume : float
         radius : float
         description : dict
-            description.de : str
-            description.en : str
-            description.es : str
-            description.fr : str
-            description.ja : str
-            description.ko : str
-            description.ru : str
-            description.zh : str
+            ...
         graphicID : int
         soundID : int
         iconID : int
@@ -296,23 +268,9 @@ class DogmaUnit(TypeBase):
     dogmaUnits.jsonl
         _key : int
         description : dict
-            description.de : str
-            description.en : str
-            description.es : str
-            description.fr : str
-            description.ja : str
-            description.ko : str
-            description.ru : str
-            description.zh : str
+            ...
         displayName : dict
-            displayName.de : str
-            displayName.en : str
-            displayName.es : str
-            displayName.fr : str
-            displayName.ja : str
-            displayName.ko : str
-            displayName.ru : str
-            displayName.zh : str
+            ...
         name : str
     """
     # JsonL Params

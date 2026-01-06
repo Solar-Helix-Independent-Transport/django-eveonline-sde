@@ -4,14 +4,23 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import zipfile
 from datetime import datetime, timezone
+from pathlib import Path
 
 # Third Party
 import httpx
+import polib
+
+# Django
+from django.conf import settings
+from django.core.management import call_command
+from django.utils.translation import activate
 
 # AA Example App
 from eve_sde.models import EveSDE
+from eve_sde.models.utils import chunked_queryset, get_langs, update_po_file
 
 from .models.map import Constellation, Moon, Planet, Region, SolarSystem, Stargate
 from .models.types import ItemCategory, ItemGroup, ItemType, ItemTypeMaterials
@@ -100,6 +109,7 @@ def download_extract_sde():
         zf.extractall(path=SDE_FOLDER)
     # delete the zip
     delete_sde_zip()
+    generate_sde_po_files()
 
 
 def process_section_of_sde(id: int = 0):
@@ -124,7 +134,41 @@ def process_from_sde(start_from: int = 0):
             logger.info(f"Skipping {mdl}")
         count += 1
 
+    cleanup_sde_po_files()
+    update_sde_mo_files()
+    set_sde_version()
     delete_sde_folder()
+
+
+def generate_sde_po_files():
+    base = settings.LOCALE_PATHS[0]
+    langs = get_langs()
+    for l in langs:
+        file_path = Path(f"{base}{l}/LC_MESSAGES/django.po")
+        if file_path.exists():
+            file_path.unlink()
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        po = polib.POFile()
+        po.metadata = {
+            'MIME-Version': '1.0',
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Content-Transfer-Encoding': '8bit',
+        }
+        po.fpath = str(file_path)
+        po.save()
+
+
+def cleanup_sde_po_files():
+    base = settings.LOCALE_PATHS[0]
+    langs = get_langs()
+    for l in langs:
+        file_path = Path(f"{base}{l}/LC_MESSAGES/django.po")
+        logger.info(f"CLEANUP {file_path}")
+        subprocess.run(["msguniq", "--use-first", f"{file_path}", "-o", f"{file_path}"])
+
+
+def update_sde_mo_files():
+    call_command("compilemessages")
 
 
 def set_sde_version():
@@ -144,3 +188,38 @@ def set_sde_version():
     _o.release_date = release
     _o.save()
     logger.info(f"SDE Updated to Build:{build} from:{release}")
+
+
+def generate_sde_celestial_names():
+    """TODO Investigate doing this on the fly vs compiling it.
+    """
+    models = [
+        Planet,
+        Moon
+    ]
+    base = settings.LOCALE_PATHS[0]
+    langs = get_langs()
+    for cls in models:
+        logger.info(f"{cls.__name__} - Starting")
+        total = cls.objects.all().count()
+        updates = {}
+        count = 0
+        processed = 0
+        for m in chunked_queryset(cls.objects.all()):
+            for l in langs:
+                activate(l)
+                if l not in updates:
+                    updates[l] = []
+                k = m.name
+                v = m.localized_name
+                if k != v:
+                    updates[l].append({"k": k, "v": v, "l": 0})
+            if count >= 5000:
+                update_po_file(updates, cls.__name__)
+                updates = {}
+                count = 0
+                logger.info(f"{cls.__name__} - {processed}/{total}")
+            count += 1
+            processed += 1
+        update_po_file(updates, cls.__name__)
+        logger.info(f"{cls.__name__} - Done")

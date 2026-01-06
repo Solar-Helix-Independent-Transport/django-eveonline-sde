@@ -3,9 +3,9 @@ from django.core.management.base import BaseCommand
 
 # AA Example App
 from eve_sde.sde_tasks import (
-    download_extract_sde,
-    process_from_sde,
-    process_section_of_sde,
+    cleanup_sde_po_files,
+    generate_sde_celestial_names,
+    update_sde_mo_files,
 )
 
 
@@ -13,6 +13,6 @@ class Command(BaseCommand):
     help = "Load SDE"
 
     def handle(self, *args, **options):
-        download_extract_sde()
-        # process_from_sde()
-        process_section_of_sde(2)
+        generate_sde_celestial_names()
+        cleanup_sde_po_files()
+        update_sde_mo_files()

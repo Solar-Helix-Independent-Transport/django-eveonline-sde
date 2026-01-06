@@ -1,9 +1,16 @@
 # Standard Library
+import logging
 import operator
 from functools import reduce
 
+# Third Party
+import polib
+
 # Django
 from django.conf import settings
+from django.db import models
+
+logger = logging.getLogger(__name__)
 
 
 def lang_key(key):
@@ -65,3 +72,35 @@ def val_from_dict(key, dict):
         return reduce(operator.getitem, _k.split("."), dict)
     except KeyError:
         return _d
+
+
+def update_po_file(data: dict, file: str):
+    base = settings.LOCALE_PATHS[0]
+    try:
+        for lang, trans in data.items():
+            file_name = f"{base}{lang}/LC_MESSAGES/django.po"
+            with open(file_name, "a") as f:
+                for d in trans:
+                    try:
+                        entry = polib.POEntry(
+                            msgid=d["k"],
+                            msgstr=d["v"],
+                            occurrences=[(file, d["l"])]
+                        )
+                        f.write(entry.__unicode__())
+                    except Exception as e:
+                        logger.exception(e)
+    except Exception as e:
+        logger.exception(e)
+
+
+def chunked_queryset(qs, batch_size=1000, index='id'):
+    """
+    Yields a queryset that will be evaluated in batches
+    """
+    qs = qs.order_by()  # clear ordering
+    min_max = qs.aggregate(min=models.Min(index), max=models.Max(index))
+    min_id, max_id = min_max['min'], min_max['max']
+    for i in range(min_id, max_id + 1, batch_size):
+        filter_args = {f'{index}__range': (i, i + batch_size - 1)}
+        yield from qs.filter(**filter_args)

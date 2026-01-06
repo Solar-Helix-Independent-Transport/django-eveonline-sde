@@ -5,6 +5,9 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+# AA Example App
+from eve_sde.managers.map import MoonManager, PlanetManager
+
 from .base import JSONModel
 from .types import ItemType
 from .utils import to_roman_numeral
@@ -285,7 +288,7 @@ class Stargate(UniverseBase):
         }
 
     @classmethod
-    def from_jsonl(cls, json_data, system_names):
+    def from_jsonl(cls, json_data, system_names, line: int = 0):
         src_id = json_data.get("solarSystemID")
         dst_id = json_data.get("destination", {}).get("solarSystemID")
         return cls(
@@ -294,7 +297,7 @@ class Stargate(UniverseBase):
             item_type_id=json_data.get("typeID"),
             name=f"{system_names[src_id]} ≫ {system_names[dst_id]}",
             solar_system_id=src_id,
-        )
+        ), []
 
     @classmethod
     def load_from_sde(cls, folder_name):
@@ -351,6 +354,8 @@ class Planet(UniverseBase):
             ("z", "position.z"),
         )
 
+    objects = PlanetManager()
+
     celestial_index = models.IntegerField(null=True, blank=True, default=None)
     item_type = models.ForeignKey(
         ItemType,
@@ -388,6 +393,10 @@ class Planet(UniverseBase):
     @classmethod
     def format_name(cls, json_data, system_names):
         return f"{system_names[json_data.get('solarSystemID')]['name']} {to_roman_numeral(json_data.get('celestialIndex'))}"
+
+    @property
+    def localized_name(self):
+        return f"{_(self.solar_system.name)} {to_roman_numeral(self.celestial_index)}"
 
 
 class Moon(UniverseBase):
@@ -439,6 +448,8 @@ class Moon(UniverseBase):
             ("z", "position.z"),
         )
 
+    objects = MoonManager()
+
     celestial_index = models.IntegerField(null=True, blank=True, default=None)
     item_type = models.ForeignKey(
         ItemType,
@@ -475,3 +486,7 @@ class Moon(UniverseBase):
     @classmethod
     def format_name(cls, json_data, planet_names):
         return f"{planet_names[json_data.get('orbitID')]['name']} - Moon {json_data.get('orbitIndex')}"
+
+    @property
+    def localized_name(self):
+        return f"{_(self.solar_system.name)} {to_roman_numeral(self.celestial_index)} - {_(self.item_type.name)} {self.orbit_index}"

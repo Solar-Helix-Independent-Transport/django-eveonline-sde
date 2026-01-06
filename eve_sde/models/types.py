@@ -241,16 +241,16 @@ class ItemTypeMaterials(JSONModel):
     quantity_min = models.IntegerField(null=True, blank=True, default=None)
 
     @classmethod
-    def from_jsonl(cls, json_data, name_lookup=False):
+    def from_jsonl(cls, json_data, name_lookup=False, line: int = 0):
         _out = []
         _key = {"_key": json_data.get("_key")}
 
         for ob in json_data.get("materials", []):
-            _out.append(cls.map_to_model(ob | _key, name_lookup=name_lookup, pk=False))
+            _out.append(cls.map_to_model(ob | _key, name_lookup=name_lookup, pk=False, line=line)[0])
         for ob in json_data.get("randomizedMaterials", []):
-            _out.append(cls.map_to_model(ob | _key, name_lookup=name_lookup, pk=False))
+            _out.append(cls.map_to_model(ob | _key, name_lookup=name_lookup, pk=False, line=line)[0])
 
-        return _out
+        return _out, []
 
     @classmethod
     def load_from_sde(cls, folder_name):

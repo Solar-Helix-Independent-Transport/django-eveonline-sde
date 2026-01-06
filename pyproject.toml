@@ -38,7 +38,7 @@ dynamic = [
 ]
 dependencies = [
     "allianceauth>=4.3.1,<5",
-    "django-modeltranslation",
+    "django-modeltranslation==19.17",
 ]
 urls.Changelog = "https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/blob/master/CHANGELOG.md"
 urls."Issue / Bug Reports" = "https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/issues"

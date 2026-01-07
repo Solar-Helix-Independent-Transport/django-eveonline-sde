@@ -4,8 +4,6 @@ on:
   release:
     # https://docs.github.com/en/actions/reference/events-that-trigger-workflows#release
     types: [released, prereleased]
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
 
 jobs:
   release:
@@ -29,7 +27,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade build
-          python -m pip install --upgrade setuptools wheel twine hatchling
+          python -m pip install --upgrade setuptools wheel twine
 
       # Package and Upload to PyPI
       - name: Package and Upload to PyPI
@@ -38,7 +36,7 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          make build_test
+          python -m build
           python -m twine upload dist/*
 
       # Add Assets to Release on GitHub

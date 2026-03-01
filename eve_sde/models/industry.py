@@ -144,7 +144,7 @@ class BlueprintActivityProduct(JSONModel):
     def load_from_sde(cls, folder_name):
         gate_qry = cls.objects.all()
         if gate_qry.exists():
-            gate_qry._raw_delete(gate_qry.db)
+            gate_qry.delete()
         super().load_from_sde(folder_name)
 
     class Meta:
@@ -247,7 +247,7 @@ class BlueprintActivityMaterial(JSONModel):
     def load_from_sde(cls, folder_name):
         gate_qry = cls.objects.all()
         if gate_qry.exists():
-            gate_qry._raw_delete(gate_qry.db)
+            gate_qry.delete()
         super().load_from_sde(folder_name)
 
     class Meta:

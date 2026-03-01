@@ -143,11 +143,7 @@ class MarketGroup(TypeBase):
 
         total_lines = 0
         with open(file_path) as json_file:
-            while _ := json_file.readline():
-                total_lines += 1
-
-        with open(file_path) as json_file:
-            while line := json_file.readline():
+            for total_lines, line in enumerate(json_file, start=1):
                 row = json.loads(line)
                 obj = cls.from_jsonl(row)
 

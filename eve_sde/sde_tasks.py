@@ -14,6 +14,11 @@ from allianceauth.services.hooks import get_extension_logger
 # AA Example App
 from eve_sde.models import EveSDE
 
+from .models.industry import (
+    BlueprintActivityMaterial,
+    BlueprintActivityProduct,
+    IndustryActivity,
+)
 from .models.map import Constellation, Moon, Planet, Region, SolarSystem, Stargate
 from .models.types import (
     DogmaAttribute,
@@ -24,6 +29,7 @@ from .models.types import (
     ItemGroup,
     ItemType,
     ItemTypeMaterials,
+    MarketGroup,
     TypeDogma,
     TypeEffect,
 )
@@ -35,6 +41,7 @@ SDE_PARTS_TO_UPDATE = [
     # # Types
     ItemCategory,
     ItemGroup,
+    MarketGroup,
     ItemType,
     ItemTypeMaterials,
     DogmaUnit,
@@ -51,6 +58,10 @@ SDE_PARTS_TO_UPDATE = [
     Stargate,
     Planet,
     Moon,
+    # # Industry extras
+    IndustryActivity,
+    BlueprintActivityProduct,
+    BlueprintActivityMaterial,
 ]
 
 SDE_URL = "https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip"
@@ -153,7 +164,9 @@ def set_sde_version():
     with open(f"{SDE_FOLDER}/_sde.jsonl") as json_file:
         sde_data = json.loads(json_file.read())
         build = sde_data.get("buildNumber", 0)
-        release = datetime.fromisoformat(sde_data.get("releaseDate"))
+        release_date = sde_data.get("releaseDate")
+        if release_date:
+            release = datetime.fromisoformat(str(release_date).replace("Z", "+00:00"))
 
     _o = EveSDE.get_solo()
     _o.build_number = build

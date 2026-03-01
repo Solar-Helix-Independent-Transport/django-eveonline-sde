@@ -1,6 +1,9 @@
 """
     Eve type models
 """
+# Standard Library
+import json
+
 # Django
 from django.db import models
 
@@ -91,6 +94,96 @@ class ItemGroup(TypeBase):
     use_base_price = models.BooleanField(default=False)
 
 
+class MarketGroup(TypeBase):
+    """
+    marketGroups.jsonl
+        _key : int
+        description : dict
+            ...
+        hasTypes : bool
+        iconID : int
+        name : dict
+            ...
+        parentGroupID : int
+    """
+
+    class Import:
+        filename = "marketGroups.jsonl"
+        lang_fields = False
+        data_map = (
+            ("description", "description.en"),
+            ("has_types", "hasTypes"),
+            ("icon_id", "iconID"),
+            ("name", "name.en"),
+            ("parent_market_group_id", "parentGroupID"),
+        )
+        update_fields = False
+        custom_names = False
+
+    description = models.TextField(null=True, blank=True, default=None)
+    has_types = models.BooleanField(default=False)
+    icon_id = models.IntegerField(null=True, blank=True, default=None)
+    parent_market_group = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        related_name="children",
+        null=True,
+        blank=True,
+        default=None,
+    )
+
+    @classmethod
+    def load_from_sde(cls, folder_name):
+        creates = []
+        updates = []
+        parent_map = {}
+
+        existing = set(cls.objects.all().values_list("pk", flat=True))
+        file_path = f"{folder_name}/{cls.Import.filename}"
+
+        total_lines = 0
+        with open(file_path) as json_file:
+            while _ := json_file.readline():
+                total_lines += 1
+
+        with open(file_path) as json_file:
+            while line := json_file.readline():
+                row = json.loads(line)
+                obj = cls.from_jsonl(row)
+
+                parent_map[obj.pk] = obj.parent_market_group_id
+                obj.parent_market_group_id = None
+
+                if obj.pk in existing:
+                    updates.append(obj)
+                else:
+                    creates.append(obj)
+
+        cls.create_update(creates, updates)
+
+        parent_updates = []
+        valid_ids = set(parent_map.keys())
+        for pk, parent_pk in parent_map.items():
+            if parent_pk and parent_pk in valid_ids:
+                parent_updates.append(
+                    cls(id=pk, parent_market_group_id=parent_pk)
+                )
+
+        if parent_updates:
+            cls.objects.bulk_update(
+                parent_updates,
+                ["parent_market_group"],
+                batch_size=500,
+            )
+
+        cls.update_sde_section_state(
+            folder_name,
+            cls.__name__,
+            total_lines,
+            cls.objects.count(),
+        )
+
+
 class ItemType(TypeBase):
     """
     types.jsonl
@@ -129,6 +222,7 @@ class ItemType(TypeBase):
             ("graphic_id", "graphicID"),
             ("group_id", "groupID"),
             ("icon_id", "iconID"),
+            ("market_group_id", "marketGroupID"),
             ("market_group_id_raw", "marketGroupID"),
             ("mass", "mass"),
             ("meta_group_id_raw", "metaGroupID"),
@@ -152,6 +246,7 @@ class ItemType(TypeBase):
     graphic_id = models.IntegerField(null=True, blank=True, default=None)
     group = models.ForeignKey(ItemGroup, on_delete=models.SET_NULL, null=True, blank=True, default=None)
     icon_id = models.IntegerField(null=True, blank=True, default=None)
+    market_group = models.ForeignKey(MarketGroup, on_delete=models.SET_NULL, null=True, blank=True, default=None)
     market_group_id_raw = models.IntegerField(null=True, blank=True, default=None)
     mass = models.FloatField(null=True, blank=True, default=None)
     meta_group_id_raw = models.IntegerField(null=True, blank=True, default=None)

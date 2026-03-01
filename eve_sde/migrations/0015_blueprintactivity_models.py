@@ -12,6 +12,56 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
+            name="IndustryActivity",
+            fields=[
+                ("id", models.BigIntegerField(primary_key=True, serialize=False)),
+                ("name", models.CharField(max_length=250)),
+            ],
+            options={
+                "abstract": False,
+                "default_permissions": (),
+            },
+        ),
+        migrations.CreateModel(
+            name="MarketGroup",
+            fields=[
+                ("id", models.BigIntegerField(primary_key=True, serialize=False)),
+                ("name", models.CharField(max_length=250)),
+                (
+                    "description",
+                    models.TextField(blank=True, default=None, null=True),
+                ),
+                ("has_types", models.BooleanField(default=False)),
+                ("icon_id", models.IntegerField(blank=True, default=None, null=True)),
+                (
+                    "parent_market_group",
+                    models.ForeignKey(
+                        blank=True,
+                        default=None,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="children",
+                        to="eve_sde.marketgroup",
+                    ),
+                ),
+            ],
+            options={
+                "abstract": False,
+                "default_permissions": (),
+            },
+        ),
+        migrations.AddField(
+            model_name="itemtype",
+            name="market_group",
+            field=models.ForeignKey(
+                blank=True,
+                default=None,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="eve_sde.marketgroup",
+            ),
+        ),
+        migrations.CreateModel(
             name="BlueprintActivityMaterial",
             fields=[
                 (

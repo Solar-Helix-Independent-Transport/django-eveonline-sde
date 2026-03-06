@@ -195,7 +195,7 @@ jobs:
   # Run Test Coverage
   test-load:
     needs: [ pypi-build-test ]
-    name: AA Latest (Python ${{ matrix.python-version }} with ${{ matrix.database }})
+    name: Test SDE Load (Python ${{ matrix.python-version }} with ${{ matrix.database }})
     runs-on: ubuntu-latest
 
     strategy:

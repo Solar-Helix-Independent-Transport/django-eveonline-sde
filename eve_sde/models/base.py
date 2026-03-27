@@ -1,6 +1,7 @@
 # Standard Library
 import json
 from datetime import datetime, timezone
+from functools import reduce
 
 # Third Party
 import httpx
@@ -99,34 +100,64 @@ class JSONModel(models.Model):
             return data.get(f"name_{lang}")
 
     @classmethod
+    def get_data_fields(cls):
+        _fields = [_f[0] for _f in cls.Import.data_map]
+        if cls.Import.lang_fields:
+            for _f in cls.Import.lang_fields:
+                _fld = _f
+                if isinstance(_f, tuple):
+                    _fld, _key = _f
+                _fields += get_langs_for_field(_fld)
+        if cls.Import.custom_names:
+            _fields += get_langs_for_field("name")
+        return _fields
+
+    @classmethod
     def create_update(cls, create_model_list: list["JSONModel"], update_model_list: list["JSONModel"]):
+        # logger.debug(f"{cls} - Creates ({len(create_model_list)})")
         cls.objects.bulk_create(
             create_model_list,
             # ignore_conflicts=True,
             batch_size=500
         )
 
+        if len(update_model_list):
+            _e = cls.objects.filter(id__in=[_i.pk for _i in update_model_list])
+            _checks = {}
+            for _i in _e:
+                _checks[_i.pk] = _i
+            update_model_list = [_s for _s in update_model_list if not cls.is_equal(_s, _checks[_s.pk])]
+            if len(update_model_list) > 0:
+                if cls.Import.update_fields:
+                    # logger.debug(f"{cls} - updates ({len(update_model_list)})")
+                    cls.objects.bulk_update(
+                        update_model_list,
+                        cls.Import.update_fields,
+                        batch_size=500
+                    )
+                elif cls.Import.data_map:
+                    # logger.debug(f"{cls} - data_map updates ({len(update_model_list)})")
+                    _fields = cls.get_data_fields()
+                    cls.objects.bulk_update(
+                        update_model_list,
+                        _fields,
+                        batch_size=500
+                    )
+        # logger.debug(f"{cls} - Done")
+
+    @classmethod
+    def is_equal(cls, new, old):
         if cls.Import.update_fields:
-            cls.objects.bulk_update(
-                update_model_list,
-                cls.Import.update_fields,
-                batch_size=500
-            )
+            for f in cls.Import.update_fields:
+                if getattr(new, f) != getattr(old, f):
+                    return False
         elif cls.Import.data_map:
-            _fields = [_f[0] for _f in cls.Import.data_map]
-            if cls.Import.lang_fields:
-                for _f in cls.Import.lang_fields:
-                    _fld = _f
-                    if isinstance(_f, tuple):
-                        _fld, _key = _f
-                    _fields += get_langs_for_field(_fld)
-            if cls.Import.custom_names:
-                _fields += get_langs_for_field("name")
-            cls.objects.bulk_update(
-                update_model_list,
-                _fields,
-                batch_size=500
-            )
+            # logger.debug(f"{cls} - data_map updates ({len(update_model_list)})")
+            _fields = cls.get_data_fields()
+            for f in _fields:
+                if getattr(new, f) != getattr(old, f):
+                    return False
+        return True
 
     @classmethod
     def load_from_sde(cls, folder_name):

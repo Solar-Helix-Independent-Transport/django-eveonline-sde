@@ -10,6 +10,8 @@ from .base import JSONModel
 from .types import ItemType
 from .utils import get_langs_for_field, to_roman_numeral
 
+POCHVEN_REGION_ID = 10000070
+
 
 class UniverseBase(JSONModel):
     """
@@ -203,6 +205,42 @@ class SolarSystem(UniverseBase):
 
     x_2d = models.FloatField(null=True, default=None, blank=True)
     y_2d = models.FloatField(null=True, default=None, blank=True)
+
+    @property
+    def is_high_sec(self) -> bool:
+        """Return True when this solar system is in high sec, else False."""
+        return self.security_status >= 0.45
+
+    @property
+    def is_low_sec(self) -> bool:
+        """Return True when this solar system is in low sec, else False."""
+        return 0.0 < self.security_status < 0.45
+
+    @property
+    def is_null_sec(self) -> bool:
+        """Return True when this solar system is in null sec, else False."""
+        return (
+            not self.is_w_space
+            and not self.is_trig_space
+            and not self.is_abyssal_deadspace
+            and self.security_status <= 0.0
+            and not self.is_w_space
+        )
+
+    @property
+    def is_w_space(self) -> bool:
+        """Return True when this solar system is in wormhole space, else False."""
+        return 31_000_000 <= self.id < 32_000_000
+
+    @property
+    def is_trig_space(self) -> bool:
+        """Return True when this solar system is in Triglavian space, else False."""
+        return self.constellation.region.id == POCHVEN_REGION_ID
+
+    @property
+    def is_abyssal_deadspace(self) -> bool:
+        """Return True when this solar system is in abyssal deadspace, else False."""
+        return 32_000_000 <= self.id < 33_000_000
 
 
 class Stargate(UniverseBase):

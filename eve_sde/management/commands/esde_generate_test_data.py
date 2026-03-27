@@ -10,8 +10,6 @@ from django.core.management.base import BaseCommand
 
 # Django EVE SDE
 from eve_sde.sde_tasks import check_sde_version
-
-# AA Example App
 from eve_sde.test_data import dump_model_data
 
 
@@ -19,13 +17,27 @@ class Command(BaseCommand):
     help = "Generates test data for an application."
 
     def add_arguments(self, parser):
-        parser.add_argument("application_label", type=str, help="Label of the application to generate test data")
-        parser.add_argument("--force_editable", type=bool, default=False,
-                            help="Force the data generation even if path doesn't appear to be editable")
-        parser.add_argument("--ignore_version", type=bool, default=False,
-                            help="Ignore the version check and generates data from current database")
+        parser.add_argument(
+            "application_label",
+            type=str,
+            help="Label of the application to generate test data",
+        )
+        parser.add_argument(
+            "--force_editable",
+            type=bool,
+            default=False,
+            help="Force the data generation even if path doesn't appear to be editable",
+        )
+        parser.add_argument(
+            "--ignore_version",
+            type=bool,
+            default=False,
+            help="Ignore the version check and generates data from current database",
+        )
 
-    def _validate_application(self, application_label: str, force_editable: bool) -> ModuleType:
+    def _validate_application(
+        self, application_label: str, force_editable: bool
+    ) -> ModuleType:
         """
         Runs checks on the application:
         - exists
@@ -34,9 +46,12 @@ class Command(BaseCommand):
         """
         application_config = apps.get_app_config(application_label)
 
-        if not force_editable and re.match(r"python3.\d+/site-packages", application_config.path):
+        if not force_editable and re.match(
+            r"python3.\d+/site-packages", application_config.path
+        ):
             raise AssertionError(
-                f"Path {application_config.path} doesn't appear to be editable. Run the command with force_editable=True if you are sure it's an editable path.")
+                f"Path {application_config.path} doesn't appear to be editable. Run the command with force_editable=True if you are sure it's an editable path."
+            )
 
         module = importlib.import_module(f"{application_label}.fixtures")
 
@@ -47,7 +62,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if not (check_sde_version() or options["ignore_version"]):
-            raise AssertionError("Your SDE version isn't up to date. Use the `esde_load_sde` command to update it.")
+            raise AssertionError(
+                "Your SDE version isn't up to date. Use the `esde_load_sde` command to update it."
+            )
 
         application_label = options["application_label"]
         force_editable = options["force_editable"]

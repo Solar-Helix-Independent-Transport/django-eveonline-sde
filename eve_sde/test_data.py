@@ -7,7 +7,6 @@ from django.core import serializers
 from django.db.models import Model
 
 # Django EVE SDE
-# AA Example App
 from eve_sde.models import JSONModel
 
 
@@ -19,6 +18,7 @@ class ModelSpec:
     ids: the list of ids to query for on the model
     field: the field to filter on for the ids, defaults to pk
     """
+
     model_name: str
     ids: list[int]
     field: str | None = None

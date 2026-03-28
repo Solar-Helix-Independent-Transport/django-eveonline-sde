@@ -267,11 +267,29 @@ class SolarSystem(UniverseBase):
         )
 
     @property
+    def is_w_space(self) -> bool:
+        """
+        Deprecated - Use `is_wh_space`
+
+        Return True when this solar system is in wormhole space, else False.
+        """
+        return self.is_wh_space()
+
+    @property
     def is_wh_space(self) -> bool:
         """
         Return True when this solar system is in wormhole space, else False.
         """
         return 31_000_000 <= self.id < 32_000_000
+
+    @property
+    def is_trig_space(self) -> bool:
+        """
+        Deprecated - Use `is_triglavian_space`
+
+        Return True when this solar system is in Triglavian space, else False.
+        """
+        return self.constellation.region.id == POCHVEN_REGION_ID
 
     @property
     def is_triglavian_space(self) -> bool:

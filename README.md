@@ -65,6 +65,21 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
       }
   ```
 
+## Optional Settings
+
+### `ESDE_BATCH_SIZE`
+
+Defaults to `500` reduce for smaller DB inserts
+
+### `ESDE_CHUNK_SIZE`
+
+Defaults to `5000` reduce if heavily memory constrained
+
+### `ESDE_TASK_SPLIT`
+
+Defaults to `False` toggle if bare metal or you have a non standard persistent storage for your `myauth` folder in docker.
+See [Issue #26](https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/issues/26)
+
 ## Contributors
 
 Thankyou to all our [contributors](https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/graphs/contributors)!

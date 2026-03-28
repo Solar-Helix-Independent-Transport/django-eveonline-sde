@@ -13,6 +13,9 @@ from django.utils.translation import gettext as _
 # Alliance Auth
 from allianceauth.services.hooks import get_extension_logger
 
+# Django EVE SDE
+from eve_sde.app_settings import ESDE_BATCH_SIZE, ESDE_CHUNK_SIZE
+
 from .admin import EveSDESection
 from .utils import get_langs, get_langs_for_field, lang_key, val_from_dict
 
@@ -118,7 +121,7 @@ class JSONModel(models.Model):
         cls.objects.bulk_create(
             create_model_list,
             # ignore_conflicts=True,
-            batch_size=500
+            batch_size=ESDE_BATCH_SIZE
         )
 
         if len(update_model_list):
@@ -133,7 +136,7 @@ class JSONModel(models.Model):
                     cls.objects.bulk_update(
                         update_model_list,
                         cls.Import.update_fields,
-                        batch_size=500
+                        batch_size=ESDE_BATCH_SIZE
                     )
                 elif cls.Import.data_map:
                     # logger.debug(f"{cls} - data_map updates ({len(update_model_list)})")
@@ -141,7 +144,7 @@ class JSONModel(models.Model):
                     cls.objects.bulk_update(
                         update_model_list,
                         _fields,
-                        batch_size=500
+                        batch_size=ESDE_BATCH_SIZE
                     )
         # logger.debug(f"{cls} - Done")
 
@@ -210,7 +213,7 @@ class JSONModel(models.Model):
                         _creates.append(_new)
                     total_read += 1
 
-                if (len(_creates) + len(_updates)) >= 5000:
+                if (len(_creates) + len(_updates)) >= ESDE_CHUNK_SIZE:
                     # lets batch these to reduce memory overhead
                     logger.info(
                         f"{file_path} - "

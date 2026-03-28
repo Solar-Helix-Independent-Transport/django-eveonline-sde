@@ -11,12 +11,14 @@ from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
 
 # Django EVE SDE
+from eve_sde.app_settings import ESDE_TASK_SPLIT
 from eve_sde.models import EveSDE
 from eve_sde.sde_tasks import (
     SDE_PARTS_TO_UPDATE,
     check_sde_version,
     delete_sde_folder,
     download_extract_sde,
+    process_from_sde,
     process_section_of_sde,
     set_sde_version,
 )
@@ -44,18 +46,20 @@ def check_for_sde_updates(self):
     base=QueueOnce,
 )
 def update_models_from_sde(self, start_id: int = 0):
-    queue = [
-        fetch_sde.si(),
-    ]
-    for id in range(start_id, len(SDE_PARTS_TO_UPDATE)):
+    if ESDE_TASK_SPLIT:
+        queue = [
+            fetch_sde.si(),
+        ]
+        for id in range(start_id, len(SDE_PARTS_TO_UPDATE)):
+            queue.append(
+                process_sde_section.si(id)
+            )
         queue.append(
-            process_sde_section.si(id)
+            cleanup_sde.si()
         )
-    queue.append(
-        cleanup_sde.si()
-    )
-    queue
-    chain(queue).apply_async()
+        chain(queue).apply_async()
+    else:
+        process_from_sde()
 
 
 @shared_task(

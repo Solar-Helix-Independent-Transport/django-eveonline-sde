@@ -3,6 +3,7 @@
 """
 # Django
 from django.db import models
+from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 
 from ..managers.map import MoonManager, PlanetManager
@@ -77,6 +78,28 @@ class Region(UniverseBase):
     nebular_id_raw = models.IntegerField(null=True, blank=True, default=None)
     wormhole_class_id_raw = models.IntegerField(null=True, blank=True, default=None)
 
+    @property
+    def constellations(self) -> QuerySet["Constellation", "Constellation"]:
+        """
+        Return all constellations for this region
+
+        :return:
+        :rtype:
+        """
+
+        return Constellation.objects.filter(region=self)
+
+    @property
+    def solar_systems(self) -> QuerySet["SolarSystem", "SolarSystem"]:
+        """
+        Return all solar systems for this region
+
+        :return:
+        :rtype:
+        """
+
+        return SolarSystem.objects.filter(constellation__region=self)
+
 
 class Constellation(UniverseBase):
     """
@@ -117,6 +140,17 @@ class Constellation(UniverseBase):
     )
     faction_id_raw = models.IntegerField(null=True, blank=True, default=None)
     wormhole_class_id_raw = models.IntegerField(null=True, blank=True, default=None)
+
+    @property
+    def solar_systems(self) -> QuerySet["SolarSystem", "SolarSystem"]:
+        """
+        Return all solar systems for this constellation
+
+        :return:
+        :rtype:
+        """
+
+        return SolarSystem.objects.filter(constellation=self)
 
 
 class SolarSystem(UniverseBase):

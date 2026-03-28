@@ -41,10 +41,12 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
 - modify your `local.py` as `modeltranslation` needs to be first in the list.
 
   ```python
-  INSTALLED_APPS = ["modeltranslation",] + INSTALLED_APPS
+  INSTALLED_APPS = [
+      "modeltranslation",
+  ] + INSTALLED_APPS
 
   INSTALLED_APPS += [
-  ..... the rest of your apps
+      # ..... the rest of your apps
   ]
   ```
 
@@ -77,6 +79,7 @@ Defaults to `5000` reduce if heavily memory constrained
 
 ### `ESDE_TASK_SPLIT`
 
+Splits the update tasks into smaller sub tasks
 Defaults to `False` toggle if bare metal or you have a non standard persistent storage for your `myauth` folder in docker.
 See [Issue #26](https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/issues/26)
 

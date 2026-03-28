@@ -289,7 +289,7 @@ class SolarSystem(UniverseBase):
 
         Return True when this solar system is in Triglavian space, else False.
         """
-        return self.constellation.region.id == POCHVEN_REGION_ID
+        return self.is_triglavian_space()
 
     @property
     def is_triglavian_space(self) -> bool:

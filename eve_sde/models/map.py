@@ -273,7 +273,7 @@ class SolarSystem(UniverseBase):
 
         Return True when this solar system is in wormhole space, else False.
         """
-        return self.is_wh_space()
+        return self.is_wh_space
 
     @property
     def is_wh_space(self) -> bool:
@@ -289,7 +289,7 @@ class SolarSystem(UniverseBase):
 
         Return True when this solar system is in Triglavian space, else False.
         """
-        return self.is_triglavian_space()
+        return self.is_triglavian_space
 
     @property
     def is_triglavian_space(self) -> bool:

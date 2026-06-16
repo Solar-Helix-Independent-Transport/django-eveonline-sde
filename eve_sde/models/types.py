@@ -13,7 +13,8 @@ class TypeBase(JSONModel):
     )
 
     name = models.CharField(
-        max_length=250
+        max_length=250,
+        db_index=True,
     )
 
     class Meta:

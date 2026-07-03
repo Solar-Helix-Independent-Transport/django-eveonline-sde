@@ -207,6 +207,7 @@ class ItemType(TypeBase):
             ("market_group_id", "marketGroupID"),
             ("mass", "mass"),
             ("meta_group_id_raw", "metaGroupID"),
+            ("meta_level", "metaLevel"),
             ("name", "name.en"),
             ("portion_size", "portionSize"),
             ("published", "published"),
@@ -216,6 +217,7 @@ class ItemType(TypeBase):
             ("variation_parent_type_id", "variationParentTypeID"),
             ("volume", "volume"),
             ("packaged_volume", "packaged_volume"),  # from extras
+            ("tech_level", "techLevel"),
         )
         update_fields = False
         custom_names = False
@@ -234,6 +236,7 @@ class ItemType(TypeBase):
     market_group = models.ForeignKey(ItemMarketGroup, on_delete=models.SET_NULL, null=True, blank=True, default=None)
     mass = models.FloatField(null=True, blank=True, default=None)
     meta_group_id_raw = models.IntegerField(null=True, blank=True, default=None)
+    meta_level = models.IntegerField(null=True, blank=True, default=None)
     portion_size = models.IntegerField(null=True, blank=True, default=None)
     published = models.BooleanField(default=False)
     race_id = models.IntegerField(null=True, blank=True, default=None)
@@ -242,6 +245,7 @@ class ItemType(TypeBase):
     variation_parent_type_id = models.IntegerField(null=True, blank=True, default=None)
     volume = models.FloatField(null=True, blank=True, default=None)
     packaged_volume = models.FloatField(null=True, blank=True, default=None)
+    tech_level = models.IntegerField(null=True, blank=True, default=None)
 
     @property
     def market_group_id_raw(self) -> int | None:

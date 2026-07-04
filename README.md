@@ -33,6 +33,9 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
   - Activities
     - Products
     - Materials
+- Archetypes
+- Freelance Job Schemas
+  - Parameters
 
 ## Setup
 

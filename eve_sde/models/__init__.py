@@ -10,7 +10,9 @@ from solo.models import SingletonModel
 from django.db import models
 
 from .admin import *
+from .freelance import *
 from .industry import *
+from .lore import *
 from .map import *
 from .types import *
 

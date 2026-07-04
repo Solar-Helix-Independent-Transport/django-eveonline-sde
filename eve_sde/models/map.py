@@ -354,7 +354,7 @@ class Stargate(UniverseBase):
     )
 
     def __str__(self):
-        return (self.from_solar_system_id, self.to_solar_system_id)
+        return self.name
 
     @classmethod
     def name_lookup(cls):

@@ -12,11 +12,13 @@ import httpx
 from allianceauth.services.hooks import get_extension_logger
 
 from .models import EveSDE
+from .models.freelance import FreelanceJobSchema, FreelanceJobSchemaParameter
 from .models.industry import (
     BlueprintActivity,
     BlueprintActivityMaterial,
     BlueprintActivityProduct,
 )
+from .models.lore import Archetype
 from .models.map import (
     Constellation,
     Moon,
@@ -68,6 +70,11 @@ SDE_PARTS_TO_UPDATE = [
     Stargate,
     Planet,
     Moon,
+    # Lore / reference
+    Archetype,
+    # Freelance Jobs
+    FreelanceJobSchema,
+    FreelanceJobSchemaParameter,  # Requires: FreelanceJobSchema
 ]
 
 SDE_URL = "https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip"

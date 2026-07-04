@@ -112,3 +112,39 @@ class PlanetAdmin(NoEdit):
 class ItemTypeAdmin(NoEdit):
     list_display = ('name', )
     search_fields = ('name', )
+
+
+@admin.register(models.ItemGroup)
+class ItemGroupAdmin(NoEdit):
+    list_display = ('name', )
+    search_fields = ('name', )
+
+
+@admin.register(models.ItemCategory)
+class ItemCategoryAdmin(NoEdit):
+    list_display = ('name', )
+    search_fields = ('name', )
+
+
+@admin.register(models.Archetype)
+class ArchetypeAdmin(NoEdit):
+    list_display = ('name', )
+    search_fields = ('name', )
+
+
+class FreelanceJobSchemaParameterInline(admin.TabularInline):
+    model = models.FreelanceJobSchemaParameter
+    fields = ('key', 'kind', 'matcher_type', 'accepted_value_types', 'optional', 'title')
+    readonly_fields = fields
+    extra = 0
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(models.FreelanceJobSchema)
+class FreelanceJobSchemaAdmin(NoEdit):
+    list_display = ('title', 'id', 'content_tags')
+    search_fields = ('title', 'id')
+    inlines = (FreelanceJobSchemaParameterInline, )

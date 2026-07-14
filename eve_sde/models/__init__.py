@@ -14,6 +14,7 @@ from .freelance import *
 from .industry import *
 from .lore import *
 from .map import *
+from .sovereignty import *
 from .types import *
 
 

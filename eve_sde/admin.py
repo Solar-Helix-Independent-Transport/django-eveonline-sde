@@ -3,7 +3,8 @@
 # Django
 from django.contrib import admin
 
-from . import models
+# Django EVE SDE
+from eve_sde import models
 
 
 class NoEdit(admin.ModelAdmin):
@@ -148,3 +149,25 @@ class FreelanceJobSchemaAdmin(NoEdit):
     list_display = ('title', 'id', 'content_tags')
     search_fields = ('title', 'id')
     inlines = (FreelanceJobSchemaParameterInline, )
+
+
+@admin.register(models.SovereigntyUpgrade)
+class SovereigntyUpgradeAdmin(NoEdit):
+    """
+    SovereigntyUpgrade admin model
+    """
+
+    list_display = ('_name',)
+    search_fields = ('item_type__name',)
+
+    def _name(self, obj):
+        """
+        Return the item type name
+
+        :param obj:
+        :type obj:
+        :return:
+        :rtype:
+        """
+
+        return obj.item_type.name

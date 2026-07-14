@@ -11,6 +11,9 @@ import httpx
 # Alliance Auth
 from allianceauth.services.hooks import get_extension_logger
 
+# Django EVE SDE
+from eve_sde.models.sovereignty import SovereigntyUpgrade
+
 from .models import EveSDE
 from .models.freelance import FreelanceJobSchema, FreelanceJobSchemaParameter
 from .models.industry import (
@@ -67,6 +70,7 @@ SDE_PARTS_TO_UPDATE = [
     SolarSystem,
     #  System stuffs
     NPCStation,  # Requires: SolarSystem, ItemType
+    SovereigntyUpgrade,  # Requires: ItemType
     Stargate,
     Planet,
     Moon,

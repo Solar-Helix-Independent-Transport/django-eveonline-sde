@@ -1,10 +1,18 @@
 # Third Party
 from modeltranslation.translator import TranslationOptions, translator
 
-from .models.freelance import FreelanceJobSchema, FreelanceJobSchemaParameter
-from .models.lore import Archetype
-from .models.map import Constellation, Moon, NPCStation, Planet, Region, SolarSystem
-from .models.types import (
+# Django EVE SDE
+from eve_sde.models.freelance import FreelanceJobSchema, FreelanceJobSchemaParameter
+from eve_sde.models.lore import Archetype
+from eve_sde.models.map import (
+    Constellation,
+    Moon,
+    NPCStation,
+    Planet,
+    Region,
+    SolarSystem,
+)
+from eve_sde.models.types import (
     DogmaAttribute,
     DogmaEffect,
     DogmaUnit,

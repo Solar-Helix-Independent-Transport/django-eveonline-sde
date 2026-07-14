@@ -4,7 +4,8 @@ import time
 # Django
 from django.core.management.base import BaseCommand
 
-from ...sde_tasks import process_from_sde
+# Django EVE SDE
+from eve_sde.sde_tasks import process_from_sde
 
 
 class Command(BaseCommand):

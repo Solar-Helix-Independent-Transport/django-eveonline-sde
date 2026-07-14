@@ -12,17 +12,15 @@ import httpx
 from allianceauth.services.hooks import get_extension_logger
 
 # Django EVE SDE
-from eve_sde.models.sovereignty import SovereigntyUpgrade
-
-from .models import EveSDE
-from .models.freelance import FreelanceJobSchema, FreelanceJobSchemaParameter
-from .models.industry import (
+from eve_sde.models import EveSDE
+from eve_sde.models.freelance import FreelanceJobSchema, FreelanceJobSchemaParameter
+from eve_sde.models.industry import (
     BlueprintActivity,
     BlueprintActivityMaterial,
     BlueprintActivityProduct,
 )
-from .models.lore import Archetype
-from .models.map import (
+from eve_sde.models.lore import Archetype
+from eve_sde.models.map import (
     Constellation,
     Moon,
     NPCStation,
@@ -31,7 +29,8 @@ from .models.map import (
     SolarSystem,
     Stargate,
 )
-from .models.types import (
+from eve_sde.models.sovereignty import SovereigntyUpgrade
+from eve_sde.models.types import (
     DogmaAttribute,
     DogmaAttributeCategory,
     DogmaEffect,

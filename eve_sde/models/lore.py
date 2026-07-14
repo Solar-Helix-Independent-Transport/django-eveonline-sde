@@ -5,7 +5,8 @@
 # Django
 from django.db import models
 
-from .base import JSONModel
+# Django EVE SDE
+from eve_sde.models.base import JSONModel
 
 
 class Archetype(JSONModel):

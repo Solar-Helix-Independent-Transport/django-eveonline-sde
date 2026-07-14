@@ -4,7 +4,8 @@ import json
 # Django
 from django.core.management.base import BaseCommand
 
-from ...models.base import JSONModel
+# Django EVE SDE
+from eve_sde.models.base import JSONModel
 
 
 def print_subclasses(self, model_check):

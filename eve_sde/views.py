@@ -5,7 +5,8 @@ import os
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render
 
-from .models import EveSDE, EveSDESection
+# Django EVE SDE
+from eve_sde.models import EveSDE, EveSDESection
 
 
 @login_required

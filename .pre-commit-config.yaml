@@ -146,14 +146,14 @@ repos:
         description: Enforce that python3.6+ type annotations are used instead of type comments.
 
   - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
-    rev: 61529b21391331d7cfd1f191df6293534a1fd79a  # frozen: 3.4.0
+    rev: bebfac867564fbd992e5b45379b4b0568d5cb85b  # frozen: 3.6.1
     hooks:
       - id: editorconfig-checker
         name: EditorConfig Checker
         description: Check for compliance with the definitions in the EditorConfig file.
 
   - repo: https://github.com/adamchainz/django-upgrade
-    rev: 801c22cf0b32793544572cb0a81655e51879f561  # frozen: 1.27.0
+    rev: bdcc9646c249f00ec9781751791e7b75b48b3722  # frozen: 1.31.1
     hooks:
       - id: django-upgrade
         name: Django upgrade
@@ -162,7 +162,7 @@ repos:
           - --target-version=4.2  # Minimum supported Django version for AA. Update as needed.
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: 37bfa06d791fd38fb4e54910b36a2ff57641b074  # frozen: v3.20.0
+    rev: 75992aaa40730136014f34227e0135f63fc951b4  # frozen: v3.21.2
     hooks:
       - id: pyupgrade
         name: PyUpgrade
@@ -171,7 +171,7 @@ repos:
           - --py310-plus  # Minimum required Python version for AA. Update as needed.
 
   - repo: https://github.com/hhatto/autopep8
-    rev: "v2.3.1"
+    rev: 4046ad49e25b7fa1db275bf66b1b7d60600ac391  # frozen: v2.3.2
     hooks:
       - id: autopep8
 
@@ -183,33 +183,33 @@ repos:
         description: Check for extraneous `# noqa` comments.
 
   - repo: https://github.com/PyCQA/isort
-    rev: c8ab4a5b21bac924d106e3103dd7c979fdd0f9bc  # frozen: 6.0.1
+    rev: 7f321d375f31a2f03833bc9a548e8783f2b5c420  # frozen: 9.0.0b1
     hooks:
       - id: isort
         name: Isort
         description: Sort imports.
 
   - repo: https://github.com/executablebooks/mdformat
-    rev: ff29be1a1ba8029d9375882aa2c812b62112a593  # frozen: 0.7.22
+    rev: 2d496dbc18e31b83a1596685347ffe0b6041daf0  # frozen: 1.0.0
     hooks:
       - id: mdformat
         name: Mdformat
         description: Format Markdown files.
         additional_dependencies:
-          - mdformat-gfm==0.4.1  # Mdformat plugin for GitHub Flavored Markdown compatibility » https://github.com/hukkin/mdformat-gfm/tags
-          - mdformat-toc==0.3.0  # Mdformat plugin to generate a table of contents » https://github.com/hukkin/mdformat-toc/tags
+          - mdformat-gfm==1.0.0  # Mdformat plugin for GitHub Flavored Markdown compatibility » https://github.com/hukkin/mdformat-gfm/tags
+          - mdformat-toc==0.5.0  # Mdformat plugin to generate a table of contents » https://github.com/hukkin/mdformat-toc/tags
           - mdformat-black==0.1.1  # Mdformat plugin to Blacken Python code blocks » https://github.com/hukkin/mdformat-black/tags
           - mdformat-shfmt==0.2.0  # Mdformat plugin to format shell code blocks » https://github.com/hukkin/mdformat-shfmt/tags
 
   - repo: https://github.com/tox-dev/tox-ini-fmt
-    rev: 4e2cb0e98735e1a57a027d9440b91663e31d10b0  # frozen: 1.6.0
+    rev: a7d32d319719ed651332d4b31bf69a73d58b8781  # frozen: 1.7.2
     hooks:
       - id: tox-ini-fmt
         name: tox.ini formatter
         description: Format the tox.ini file.
 
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: 8184a5b72f4a8fcd003b041ecb04c41a9f34fd2b  # frozen: v2.6.0
+    rev: 3632ea90e7641b574983ddf3a11ccedefff3c881  # frozen: v2.25.3
     hooks:
       - id: pyproject-fmt
         name: pyproject.toml formatter
@@ -217,10 +217,10 @@ repos:
         args:
           - --indent=4
         additional_dependencies:
-          - tox==4.29.0  # https://github.com/tox-dev/tox/releases/latest
+          - tox==4.56.4  # https://github.com/tox-dev/tox/releases/latest
 
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: 78f5e0f104cfa803d0597eaa924b4de3becd3e3e  # frozen: v0.24.1
+    rev: 4b2e70d08cb2ccd26d1fba73588de41c7a5d50b7  # frozen: v0.25
     hooks:
       - id: validate-pyproject
         name: Validate pyproject.toml
@@ -236,7 +236,7 @@ repos:
 #          - --py-version=3.10  # Minimum required Python version for AA. Update as needed.
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 9b9df9f1d3bd9a5e7a52d8f61a3be3e29e73d127  # frozen: 0.33.3
+    rev: 1a4bb160cab6417b3045e1b37b6b72449243e658  # frozen: 0.37.4
     hooks:
       - id: check-github-actions
         name: Check GitHub Actions

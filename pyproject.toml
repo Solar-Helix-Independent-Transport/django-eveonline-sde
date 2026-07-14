@@ -16,7 +16,7 @@ license = { file = "LICENSE" }
 authors = [
     { name = "Aaron Kable", email = "aaronkable@gmail.com" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.15"
 classifiers = [
     "Environment :: Web Environment",
     "Framework :: Django",
@@ -30,6 +30,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
@@ -41,13 +42,11 @@ dependencies = [
     "django-modeltranslation==0.19.17",
     "httpx>=0.28,<1",
 ]
-urls.Changelog = "https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/blob/master/CHANGELOG.md"
 urls."Issue / Bug Reports" = "https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/issues"
+urls.Changelog = "https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/blob/master/CHANGELOG.md"
 
-[tool.hatch.version]
-path = "eve_sde/__init__.py"
-
-[tool.hatch.build]
-include = [
+[tool.hatch]
+version.path = "eve_sde/__init__.py"
+build.include = [
     "eve_sde",
 ]

@@ -42,10 +42,10 @@ class SovereigntyUpgrade(JSONModel):
         update_fields = False
         custom_names = False
 
-    item_type = models.ForeignKey(
+    item_type = models.OneToOneField(
         to=ItemType,
         on_delete=models.CASCADE,
-        related_name="sovereignty_upgrades",
+        related_name="sovereignty_upgrade",
         null=True,
         blank=True,
         default=None,
@@ -53,7 +53,7 @@ class SovereigntyUpgrade(JSONModel):
     fuel_item_type = models.ForeignKey(
         to=ItemType,
         on_delete=models.CASCADE,
-        related_name="sovereignty_upgrades_fuel",
+        related_name="sovereignty_upgrade_fuel",
         null=True,
         blank=True,
         default=None,

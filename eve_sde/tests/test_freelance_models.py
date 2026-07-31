@@ -14,12 +14,20 @@ import json
 import os
 import shutil
 import tempfile
+from unittest import mock
 
 # Django
 from django.test import TestCase
 
 # Django EVE SDE
-from eve_sde.models.freelance import FreelanceJobSchema, FreelanceJobSchemaParameter
+from eve_sde.models.freelance import (
+    FreelanceJobSchema,
+    FreelanceJobSchemaParameter,
+    _build_value_type_models,
+    _import_optional_model,
+)
+from eve_sde.models.lore import Archetype
+from eve_sde.models.map import SolarSystem
 
 
 class FreelanceModelsTestsBase(TestCase):
@@ -133,3 +141,37 @@ class FreelanceJobSchemaParameterTests(FreelanceModelsTestsBase):
         FreelanceJobSchemaParameter.load_from_sde(self.tmpdir)
         target = FreelanceJobSchemaParameter.objects.get(pk="BoostShield:target")
         self.assertEqual(str(target), "BoostShield:target")
+
+
+class ImportOptionalModelTests(TestCase):
+    """
+    _import_optional_model is what keeps the character/corporation/alliance/
+    faction entries from being a hard AllianceAuth dependency: importing
+    eve_sde.models must not crash just because AllianceAuth (or whatever a
+    project points these settings at) isn't installed - it should degrade to
+    None for that one value type instead.
+    """
+
+    def test_resolves_a_real_dotted_path(self):
+        self.assertIs(_import_optional_model("eve_sde.models.lore.Archetype"), Archetype)
+
+    def test_returns_none_for_an_unimportable_path(self):
+        self.assertIsNone(_import_optional_model("not_an_installed_package.models.Something"))
+
+    def test_returns_none_when_unset(self):
+        self.assertIsNone(_import_optional_model(None))
+        self.assertIsNone(_import_optional_model(""))
+
+
+class BuildValueTypeModelsTests(TestCase):
+
+    def test_ships_null_for_a_value_type_whose_model_setting_is_unimportable(self):
+        with mock.patch(
+            "eve_sde.models.freelance.ESDE_FREELANCE_FACTION_MODEL",
+            "not_an_installed_package.models.Something",
+        ):
+            result = _build_value_type_models()
+
+        self.assertIsNone(result["faction"])
+        # unrelated entries are untouched
+        self.assertIs(result["solarsystem"], SolarSystem)

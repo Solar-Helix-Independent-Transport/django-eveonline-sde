@@ -120,3 +120,31 @@ class CleanupSdeAfterFailureTests(TestCase):
             celery_tasks.cleanup_sde_after_failure("some-failed-task-id")
 
         mock_delete.assert_called_once()
+
+
+class ResolveTaskLockBaseTests(TestCase):
+    """
+    _resolve_task_lock_base is what keeps QueueOnce from being a hard
+    AllianceAuth dependency: the default setting points at AllianceAuth's
+    thin wrapper, but if that can't be imported (AllianceAuth not
+    installed), it must fall back to celery_once.QueueOnce directly with
+    the same graceful=True behavior rather than crashing.
+    """
+
+    def test_resolves_the_configured_default(self):
+        # Alliance Auth
+        from allianceauth.services.tasks import QueueOnce as AllianceAuthQueueOnce
+
+        self.assertIs(celery_tasks._resolve_task_lock_base(), AllianceAuthQueueOnce)
+
+    def test_falls_back_to_celery_once_when_the_configured_path_is_unimportable(self):
+        # Third Party
+        from celery_once import QueueOnce as UpstreamQueueOnce
+
+        with mock.patch.object(
+            celery_tasks, "ESDE_CELERY_TASK_BASE", "not_an_installed_package.services.tasks.QueueOnce",
+        ):
+            fallback_base = celery_tasks._resolve_task_lock_base()
+
+        self.assertTrue(issubclass(fallback_base, UpstreamQueueOnce))
+        self.assertEqual(fallback_base.once["graceful"], True)

@@ -8,8 +8,15 @@
 """
 # Django
 from django.db import models
+from django.utils.module_loading import import_string
 
 # Django EVE SDE
+from eve_sde.app_settings import (
+    ESDE_FREELANCE_ALLIANCE_MODEL,
+    ESDE_FREELANCE_CHARACTER_MODEL,
+    ESDE_FREELANCE_CORPORATION_MODEL,
+    ESDE_FREELANCE_FACTION_MODEL,
+)
 from eve_sde.models.base import JSONModel
 from eve_sde.models.lore import Archetype
 from eve_sde.models.map import Constellation, Region, SolarSystem
@@ -199,16 +206,25 @@ class FreelanceJobSchemaParameter(JSONModel):
         super().load_from_sde(folder_name)
 
 
+def _import_optional_model(dotted_path: str | None):
+    """
+    Resolve a "package.module.ClassName" setting to the class it names.
+
+    Returns None if the setting is unset, or if the class can't be imported
+    (e.g. the AllianceAuth-based default is configured but AllianceAuth
+    isn't installed) - callers treat a None entry as "this value type isn't
+    available here" rather than crashing the whole import.
+    """
+    if not dotted_path:
+        return None
+    try:
+        return import_string(dotted_path)
+    except ImportError:
+        return None
+
+
 def _build_value_type_models() -> dict:
     """Maps a parameter's `accepted_value_types` entries to the model each resolves to."""
-    # Alliance Auth
-    from allianceauth.eveonline.models import (
-        EveAllianceInfo,
-        EveCharacter,
-        EveCorporationInfo,
-        EveFactionInfo,
-    )
-
     return {
         "solarsystem": SolarSystem,
         "constellation": Constellation,
@@ -218,10 +234,10 @@ def _build_value_type_models() -> dict:
         "ore_type": ItemType,
         "ore_group": ItemGroup,
         "archetype": Archetype,
-        "faction": EveFactionInfo,
-        "character": EveCharacter,
-        "corporation": EveCorporationInfo,
-        "alliance": EveAllianceInfo,
+        "faction": _import_optional_model(ESDE_FREELANCE_FACTION_MODEL),
+        "character": _import_optional_model(ESDE_FREELANCE_CHARACTER_MODEL),
+        "corporation": _import_optional_model(ESDE_FREELANCE_CORPORATION_MODEL),
+        "alliance": _import_optional_model(ESDE_FREELANCE_ALLIANCE_MODEL),
     }
 
 

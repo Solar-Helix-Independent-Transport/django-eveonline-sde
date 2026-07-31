@@ -38,8 +38,10 @@ dynamic = [
     "version",
 ]
 dependencies = [
-    "allianceauth>=4.3.1,<6",
+    "celery>=5,<6",
+    "celery-once>=3,<4",
     "django-modeltranslation==0.19.17",
+    "django-solo>=2,<3",
     "httpx>=0.28,<1",
 ]
 urls."Issue / Bug Reports" = "https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/issues"

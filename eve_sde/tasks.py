@@ -1,18 +1,18 @@
 """App Tasks"""
 
+# Standard Library
+import logging
+
 # Third Party
 import httpx
 from celery import chain, shared_task
 
 # Django
 from django.utils import timezone
-
-# Alliance Auth
-from allianceauth.services.hooks import get_extension_logger
-from allianceauth.services.tasks import QueueOnce
+from django.utils.module_loading import import_string
 
 # Django EVE SDE
-from eve_sde.app_settings import ESDE_TASK_SPLIT
+from eve_sde.app_settings import ESDE_CELERY_TASK_BASE, ESDE_TASK_SPLIT
 from eve_sde.models import EveSDE
 from eve_sde.sde_tasks import (
     SDE_PARTS_TO_UPDATE,
@@ -24,7 +24,35 @@ from eve_sde.sde_tasks import (
     set_sde_version,
 )
 
-logger = get_extension_logger(__name__)
+logger = logging.getLogger(__name__)
+
+
+def _resolve_task_lock_base():
+    """
+    Resolve the single-flight task-locking base class (skip re-queuing a task
+    while one is already running/queued) from ESDE_CELERY_TASK_BASE, which
+    defaults to AllianceAuth's QueueOnce.
+
+    The actual locking behavior comes from celery_once either way -
+    AllianceAuth's version is just a thin subclass that sets
+    once['graceful']=True. If the configured class can't be imported (e.g.
+    AllianceAuth isn't installed), fall back to celery_once.QueueOnce
+    directly with that same graceful=True behavior, rather than requiring
+    AllianceAuth specifically.
+    """
+    try:
+        return import_string(ESDE_CELERY_TASK_BASE)
+    except ImportError:
+        # Third Party
+        from celery_once import QueueOnce as _CeleryOnceQueueOnce
+
+        class _FallbackQueueOnce(_CeleryOnceQueueOnce):
+            once = {**_CeleryOnceQueueOnce.once, "graceful": True}
+
+        return _FallbackQueueOnce
+
+
+TaskLockBase = _resolve_task_lock_base()
 
 # What models and the order to load them
 
@@ -42,7 +70,7 @@ NETWORK_RETRY_KWARGS = dict(
 
 @shared_task(
     bind=True,
-    base=QueueOnce,
+    base=TaskLockBase,
     **NETWORK_RETRY_KWARGS,
 )
 def check_for_sde_updates(self):
@@ -56,7 +84,7 @@ def check_for_sde_updates(self):
 
 @shared_task(
     bind=True,
-    base=QueueOnce,
+    base=TaskLockBase,
     **NETWORK_RETRY_KWARGS,
 )
 def update_models_from_sde(self, start_id: int = 0):
@@ -78,7 +106,7 @@ def update_models_from_sde(self, start_id: int = 0):
 
 @shared_task(
     bind=True,
-    base=QueueOnce,
+    base=TaskLockBase,
 )
 def process_sde_section(self, id: int = 0):
     process_section_of_sde(id)
@@ -86,7 +114,7 @@ def process_sde_section(self, id: int = 0):
 
 @shared_task(
     bind=True,
-    base=QueueOnce,
+    base=TaskLockBase,
     **NETWORK_RETRY_KWARGS,
 )
 def fetch_sde(self):
@@ -95,7 +123,7 @@ def fetch_sde(self):
 
 @shared_task(
     bind=True,
-    base=QueueOnce,
+    base=TaskLockBase,
 )
 def cleanup_sde(self):
     set_sde_version()

@@ -1,5 +1,6 @@
 # Standard Library
 import json
+import logging
 import os
 import shutil
 import zipfile
@@ -7,9 +8,6 @@ from datetime import datetime, timezone
 
 # Third Party
 import httpx
-
-# Alliance Auth
-from allianceauth.services.hooks import get_extension_logger
 
 # Django EVE SDE
 from eve_sde.models import EveSDE
@@ -44,7 +42,7 @@ from eve_sde.models.types import (
     TypeEffect,
 )
 
-logger = get_extension_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # What models and the order to load them
 SDE_PARTS_TO_UPDATE = [

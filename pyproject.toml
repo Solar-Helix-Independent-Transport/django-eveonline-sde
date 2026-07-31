@@ -45,7 +45,7 @@ dependencies = [
     "httpx>=0.28,<1",
 ]
 urls."Issue / Bug Reports" = "https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/issues"
-urls.Changelog = "https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/blob/master/CHANGELOG.md"
+urls.Changelog = "https://github.com/Solar-Helix-Independent-Transport/django-eveonline-sde/releases"
 
 [tool.hatch]
 version.path = "eve_sde/__init__.py"

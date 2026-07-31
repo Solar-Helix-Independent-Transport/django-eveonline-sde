@@ -52,7 +52,7 @@ class SovereigntyUpgrade(JSONModel):
     )
     fuel_item_type = models.ForeignKey(
         to=ItemType,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_DEFAULT,
         related_name="sovereignty_upgrade_fuel",
         null=True,
         blank=True,

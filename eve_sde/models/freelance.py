@@ -9,10 +9,11 @@
 # Django
 from django.db import models
 
-from .base import JSONModel
-from .lore import Archetype
-from .map import Constellation, Region, SolarSystem
-from .types import ItemGroup, ItemType
+# Django EVE SDE
+from eve_sde.models.base import JSONModel
+from eve_sde.models.lore import Archetype
+from eve_sde.models.map import Constellation, Region, SolarSystem
+from eve_sde.models.types import ItemGroup, ItemType
 
 
 class FreelanceJobSchema(JSONModel):

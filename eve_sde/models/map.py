@@ -6,10 +6,11 @@ from django.db import models
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 
-from ..managers.map import MoonManager, PlanetManager
-from .base import JSONModel
-from .types import ItemType
-from .utils import get_langs_for_field, to_roman_numeral
+# Django EVE SDE
+from eve_sde.managers.map import MoonManager, PlanetManager
+from eve_sde.models.base import JSONModel
+from eve_sde.models.types import ItemType
+from eve_sde.models.utils import get_langs_for_field, to_roman_numeral
 
 POCHVEN_REGION_ID = 10000070
 

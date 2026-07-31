@@ -3,7 +3,8 @@
 # Django
 from django.urls import path
 
-from . import views
+# Django EVE SDE
+from eve_sde import views
 
 app_name: str = "esde"  # pylint: disable=invalid-name
 

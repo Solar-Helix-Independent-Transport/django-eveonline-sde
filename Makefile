@@ -75,7 +75,7 @@ graph_models:
 
 # Graph models
 .PHONY: load_sde
-graph_models:
+load_sde:
 	@echo "Test load the SDE"
 	@python ../myauth/manage.py \
 		esde_load_sde

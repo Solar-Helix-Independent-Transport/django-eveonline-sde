@@ -6,15 +6,14 @@ Create your models in here
 # Third Party
 from solo.models import SingletonModel
 
-# Django
-from django.db import models
-
-from .admin import *
-from .freelance import *
-from .industry import *
-from .lore import *
-from .map import *
-from .types import *
+# Django EVE SDE
+from eve_sde.models.admin import *
+from eve_sde.models.freelance import *
+from eve_sde.models.industry import *
+from eve_sde.models.lore import *
+from eve_sde.models.map import *
+from eve_sde.models.sovereignty import *
+from eve_sde.models.types import *
 
 
 class EveSDE(SingletonModel):

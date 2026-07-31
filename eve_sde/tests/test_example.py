@@ -5,7 +5,8 @@ Example Test
 # Django
 from django.test import TestCase
 
-from ..models import ItemType
+# Django EVE SDE
+from eve_sde.models import ItemType
 
 
 class TestExample(TestCase):

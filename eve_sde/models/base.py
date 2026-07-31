@@ -15,9 +15,8 @@ from allianceauth.services.hooks import get_extension_logger
 
 # Django EVE SDE
 from eve_sde.app_settings import ESDE_BATCH_SIZE, ESDE_CHUNK_SIZE
-
-from .admin import EveSDESection
-from .utils import get_langs, get_langs_for_field, lang_key, val_from_dict
+from eve_sde.models.admin import EveSDESection
+from eve_sde.models.utils import get_langs, get_langs_for_field, lang_key, val_from_dict
 
 logger = get_extension_logger(__name__)
 

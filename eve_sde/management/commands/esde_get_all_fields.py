@@ -5,7 +5,8 @@ import os
 # Django
 from django.core.management.base import BaseCommand
 
-from ...sde_tasks import SDE_FOLDER, delete_sde_folder, download_extract_sde
+# Django EVE SDE
+from eve_sde.sde_tasks import SDE_FOLDER, delete_sde_folder, download_extract_sde
 
 
 class Command(BaseCommand):

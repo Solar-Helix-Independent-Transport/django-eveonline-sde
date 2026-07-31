@@ -36,6 +36,7 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
 - Archetypes
 - Freelance Job Schemas
   - Parameters
+- Sovereignty Upgrades
 
 ## Setup
 

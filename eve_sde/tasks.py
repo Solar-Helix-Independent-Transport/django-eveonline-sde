@@ -1,6 +1,7 @@
 """App Tasks"""
 
 # Third Party
+import httpx
 from celery import chain, shared_task
 
 # Django
@@ -27,10 +28,22 @@ logger = get_extension_logger(__name__)
 
 # What models and the order to load them
 
+# Network calls to CCP's SDE endpoints are the only genuinely transient
+# failure mode here - retry those with backoff rather than waiting for the
+# next scheduled check. Bad/malformed SDE data is not retried: it will fail
+# the same way every time and should surface immediately.
+NETWORK_RETRY_KWARGS = dict(
+    autoretry_for=(httpx.HTTPError,),
+    retry_backoff=60,
+    retry_backoff_max=600,
+    max_retries=5,
+)
+
 
 @shared_task(
     bind=True,
     base=QueueOnce,
+    **NETWORK_RETRY_KWARGS,
 )
 def check_for_sde_updates(self):
     if not check_sde_version():
@@ -44,6 +57,7 @@ def check_for_sde_updates(self):
 @shared_task(
     bind=True,
     base=QueueOnce,
+    **NETWORK_RETRY_KWARGS,
 )
 def update_models_from_sde(self, start_id: int = 0):
     if ESDE_TASK_SPLIT:
@@ -57,7 +71,7 @@ def update_models_from_sde(self, start_id: int = 0):
         queue.append(
             cleanup_sde.si()
         )
-        chain(queue).apply_async()
+        chain(queue).apply_async(link_error=cleanup_sde_after_failure.s())
     else:
         process_from_sde()
 
@@ -73,6 +87,7 @@ def process_sde_section(self, id: int = 0):
 @shared_task(
     bind=True,
     base=QueueOnce,
+    **NETWORK_RETRY_KWARGS,
 )
 def fetch_sde(self):
     download_extract_sde()
@@ -84,4 +99,16 @@ def fetch_sde(self):
 )
 def cleanup_sde(self):
     set_sde_version()
+    delete_sde_folder()
+
+
+@shared_task(bind=True)
+def cleanup_sde_after_failure(self, *args, **kwargs):
+    """
+    Error callback for the split-task chain. If any section fails partway
+    through, the chain aborts and `cleanup_sde` never runs - this removes the
+    partially-extracted SDE folder so the next attempt starts clean, without
+    marking the failed build as installed.
+    """
+    logger.error("SDE update chain failed - cleaning up partial download")
     delete_sde_folder()

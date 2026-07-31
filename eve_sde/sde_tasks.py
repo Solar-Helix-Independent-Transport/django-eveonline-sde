@@ -92,6 +92,11 @@ def download_file(url, local_filename):
     Args:
         url (str): The URL of the file to download.
         local_filename (str): The path and name to save the downloaded file.
+
+    Raises:
+        Exception: Re-raises any download failure after logging it, and removes
+            any partially written file so callers never see a truncated/corrupt
+            local file mistaken for a good one.
     """
     try:
         with httpx.stream("GET", url, follow_redirects=True) as response:
@@ -100,20 +105,21 @@ def download_file(url, local_filename):
                 for chunk in response.iter_bytes():
                     f.write(chunk)
         logger.info(f"File downloaded successfully to: {local_filename}")
-    except httpx.HTTPStatusError as e:
-        logger.error(f"HTTP error during download: {e}")
-    except httpx.RequestError as e:
-        logger.error(f"Network error during download: {e}")
-    except Exception as e:
-        logger.exception(f"An unexpected error occurred: {e}")
+    except Exception:
+        logger.exception(f"Failed to download {url}")
+        if os.path.exists(local_filename):
+            os.remove(local_filename)
+        raise
 
 
 def delete_sde_zip():
-    os.remove(SDE_FILE_NAME)
+    if os.path.exists(SDE_FILE_NAME):
+        os.remove(SDE_FILE_NAME)
 
 
 def delete_sde_folder():
-    shutil.rmtree(SDE_FOLDER)
+    if os.path.exists(SDE_FOLDER):
+        shutil.rmtree(SDE_FOLDER)
 
 
 def check_sde_version():
@@ -121,7 +127,13 @@ def check_sde_version():
     {"_key": "sde", "buildNumber": 3142455, "releaseDate": "2025-12-15T11:14:02Z"}
     """
     url = "https://developers.eveonline.com/static-data/tranquility/latest.jsonl"
-    data = httpx.get(url).json()
+    try:
+        response = httpx.get(url)
+        response.raise_for_status()
+        data = response.json()
+    except Exception:
+        logger.exception(f"Failed to check SDE version from {url}")
+        raise
 
     build_number = data.get("buildNumber")
 
@@ -138,10 +150,16 @@ def download_extract_sde():
         SDE_URL,
         SDE_FILE_NAME
     )
-    with zipfile.ZipFile(SDE_FILE_NAME, mode="r") as zf:
-        zf.extractall(path=SDE_FOLDER)
-    # delete the zip
-    delete_sde_zip()
+    try:
+        with zipfile.ZipFile(SDE_FILE_NAME, mode="r") as zf:
+            zf.extractall(path=SDE_FOLDER)
+    except Exception:
+        logger.exception(f"Failed to extract {SDE_FILE_NAME}")
+        delete_sde_folder()
+        raise
+    finally:
+        # the zip is either fully extracted or unusable - either way it has no further use
+        delete_sde_zip()
 
 
 def process_section_of_sde(id: int = 0):
@@ -157,17 +175,20 @@ def process_from_sde(start_from: int = 0):
     """
     download_extract_sde()
 
-    count = 0
-    for mdl in SDE_PARTS_TO_UPDATE:
-        if count >= start_from:
-            logger.info(f"Starting {mdl}")
-            process_section_of_sde(count)
-        else:
-            logger.info(f"Skipping {mdl}")
-        count += 1
+    try:
+        count = 0
+        for mdl in SDE_PARTS_TO_UPDATE:
+            if count >= start_from:
+                logger.info(f"Starting {mdl}")
+                process_section_of_sde(count)
+            else:
+                logger.info(f"Skipping {mdl}")
+            count += 1
 
-    set_sde_version()
-    delete_sde_folder()
+        # only recorded as the current build if every section above completed
+        set_sde_version()
+    finally:
+        delete_sde_folder()
 
 
 def set_sde_version():
@@ -177,14 +198,18 @@ def set_sde_version():
     build = 0
     release = datetime.now(tz=timezone.utc)
 
-    with open(f"{SDE_FOLDER}/_sde.jsonl") as json_file:
-        sde_data = json.loads(json_file.read())
-        build = sde_data.get("buildNumber", 0)
-        release_date = sde_data.get("releaseDate")
-        if release_date.endswith("Z"):
-            release_date = release_date[:-1] + "+00:00"
+    try:
+        with open(f"{SDE_FOLDER}/_sde.jsonl") as json_file:
+            sde_data = json.loads(json_file.read())
+            build = sde_data.get("buildNumber", 0)
+            release_date = sde_data.get("releaseDate")
+            if release_date.endswith("Z"):
+                release_date = release_date[:-1] + "+00:00"
 
-        release = datetime.fromisoformat(release_date)
+            release = datetime.fromisoformat(release_date)
+    except Exception:
+        logger.exception(f"Failed to read SDE version from {SDE_FOLDER}/_sde.jsonl")
+        raise
 
     _o = EveSDE.get_solo()
     _o.build_number = build

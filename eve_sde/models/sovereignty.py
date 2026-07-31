@@ -29,7 +29,6 @@ class SovereigntyUpgrade(JSONModel):
         filename = "sovereigntyUpgrades.jsonl"
         lang_fields = False
         data_map = (
-            ("item_type_id", "_key"),
             ("hourly_upkeep", "fuel.hourly_upkeep"),
             ("startup_cost", "fuel.startup_cost"),
             ("fuel_item_type_id", "fuel.type_id"),
@@ -46,9 +45,7 @@ class SovereigntyUpgrade(JSONModel):
         to=ItemType,
         on_delete=models.CASCADE,
         related_name="sovereignty_upgrade",
-        null=True,
-        blank=True,
-        default=None,
+        primary_key=True,
     )
     fuel_item_type = models.ForeignKey(
         to=ItemType,
@@ -69,14 +66,6 @@ class SovereigntyUpgrade(JSONModel):
     mutually_exclusive_group = models.CharField(
         max_length=250, null=True, blank=True, default=None
     )
-
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
 
     class Meta:
         default_permissions = ()

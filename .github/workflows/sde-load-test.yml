@@ -1,0 +1,55 @@
+name: SDE Load Test
+
+# Downloads the real, current SDE from CCP's servers and does a full import -
+# a live network integration smoke test, not a unit test. Deliberately
+# manual-only (not run on push/PR): it depends on an external server, is
+# slow, and its failure mode (CCP changed the data shape) isn't something a
+# routine push/PR needs to catch on every run.
+
+env:
+  REDIS_VERSION: latest
+
+on:
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: 'Python version to run the load test against'
+        required: false
+        default: '3.11'
+        type: string
+
+jobs:
+  test-load:
+    name: Test SDE Load (Python ${{ inputs.python-version }})
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # Install redis
+      - name: Install redis
+        uses: shogo82148/actions-setup-redis@v1
+        with:
+          redis-version: ${{ env.REDIS_VERSION }}
+
+      # Verify that redis is up
+      - name: Verify that redis is up
+        run: redis-cli ping
+
+      # Set up Python
+      - name: Setup Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      # Install Tox and any other packages
+      - name: Install Tox and any other packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade tox tox-gh-actions
+
+      # Run Tox with the specified environment
+      - name: Run Tox
+        run: tox -v -c tox_import.ini

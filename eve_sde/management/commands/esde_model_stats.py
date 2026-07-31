@@ -12,7 +12,9 @@ def print_subclasses(self, model_check):
     for m in model_check.__subclasses__():
         try:
             self.stdout.write(f"{m.__name__} - {m.objects.all().count()}")
-        except AttributeError:
+        except Exception:
+            # best-effort diagnostic - skip abstract subclasses (no manager)
+            # and any subclass without a real table (e.g. unmigrated)
             pass
         print_subclasses(self, m)
 

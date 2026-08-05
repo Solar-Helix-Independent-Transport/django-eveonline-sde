@@ -122,7 +122,7 @@ class JSONModel(models.Model):
         )
 
         if len(update_model_list):
-            _e = cls.objects.filter(id__in=[_i.pk for _i in update_model_list])
+            _e = cls.objects.filter(pk__in=[_i.pk for _i in update_model_list])
             _checks = {}
             for _i in _e:
                 _checks[_i.pk] = _i

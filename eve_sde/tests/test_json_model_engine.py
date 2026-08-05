@@ -27,6 +27,7 @@ from eve_sde.models.base import JSONModel
 from eve_sde.models.industry import BlueprintActivity
 from eve_sde.models.lore import Archetype
 from eve_sde.models.map import Planet, SolarSystem
+from eve_sde.models.sovereignty import SovereigntyUpgrade
 from eve_sde.models.types import ItemCategory, ItemType
 
 
@@ -258,6 +259,48 @@ class LoadFromSdeSingleRowUpdateTests(TestCase):
 
         self.assertEqual(ItemCategory.objects.count(), 1)
         self.assertEqual(ItemCategory.objects.get(pk=1).icon_id, 1)
+
+
+class CreateUpdateNonIdPrimaryKeyTests(TestCase):
+    """
+    create_update's update-detection query used to hardcode id__in, which
+    only works for models whose primary key column is actually named "id".
+    SovereigntyUpgrade's pk is item_type (a OneToOneField with
+    primary_key=True), so its Django-generated pk column is "item_type_id"
+    - id__in raised FieldError against it. This exercises the real
+    load_from_sde update path (not create_update directly) so it fails the
+    same way the production traceback did if the regression comes back.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
+        with open(os.path.join(self.tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+        ItemType.objects.create(id=1, name="Test Upgrade")
+
+    def _write_upgrade(self, power_production):
+        row = {
+            "_key": 1,
+            "fuel": {"hourly_upkeep": 10, "startup_cost": 5, "type_id": None},
+            "mutually_exclusive_group": "group_a",
+            "power_production": power_production,
+            "power_allocation": 1,
+            "workforce_production": 1,
+            "workforce_allocation": 1,
+        }
+        with open(os.path.join(self.tmpdir, "sovereigntyUpgrades.jsonl"), "w") as f:
+            f.write(json.dumps(row) + "\n")
+
+    def test_second_pass_update_does_not_raise_field_error(self):
+        self._write_upgrade(power_production=100)
+        SovereigntyUpgrade.load_from_sde(self.tmpdir)
+
+        self._write_upgrade(power_production=200)
+        SovereigntyUpgrade.load_from_sde(self.tmpdir)
+
+        self.assertEqual(SovereigntyUpgrade.objects.count(), 1)
+        self.assertEqual(SovereigntyUpgrade.objects.get(pk=1).power_production, 200)
 
 
 class LoadFromSdeChunkedFlushTests(TestCase):

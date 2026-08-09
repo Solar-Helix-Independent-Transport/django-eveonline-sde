@@ -16,4 +16,4 @@ class Command(BaseCommand):
         download_extract_sde()
         # process_from_sde()
         # process_section_of_sde(8)
-        process_section_of_sde(21)
+        process_section_of_sde(7)

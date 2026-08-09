@@ -9,6 +9,7 @@ from django.utils.html import format_html
 
 # Django EVE SDE
 from eve_sde import models
+from eve_sde.models.map import PlanetResource
 
 
 class NoEdit(admin.ModelAdmin):
@@ -131,6 +132,17 @@ class MoonAdmin(NoEdit):
         )
 
 
+class PlanetResourcesInline(admin.TabularInline):
+    model = PlanetResource
+    fields = ('power', 'workforce', 'reagent_amount_per_cycle', 'reagent_type')
+    readonly_fields = fields
+    extra = 0
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(models.Planet)
 class PlanetAdmin(NoEdit):
     list_display = ['name', 'get_region', 'get_constellation', 'get_system']
@@ -140,6 +152,7 @@ class PlanetAdmin(NoEdit):
         'solar_system__constellation__name',
         'solar_system__name'
     ]
+    inlines = (PlanetResourcesInline, )
 
     def get_region(self, obj):
         return obj.solar_system.constellation.region.name
@@ -156,6 +169,12 @@ class PlanetAdmin(NoEdit):
             'solar_system__constellation',
             'solar_system'
         )
+
+
+@admin.register(PlanetResource)
+class PlanetResourceAdmin(NoEdit):
+    list_display = ('planet', 'power', 'workforce', 'reagent_amount_per_cycle', 'reagent_type')
+    search_fields = ('planet', 'reagent_type')
 
 
 @admin.register(models.Stargate)

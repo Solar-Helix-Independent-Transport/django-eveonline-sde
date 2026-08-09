@@ -23,6 +23,7 @@ from eve_sde.models.map import (
     Moon,
     NPCStation,
     Planet,
+    PlanetResource,
     Region,
     SolarSystem,
     Stargate,
@@ -70,6 +71,7 @@ SDE_PARTS_TO_UPDATE = [
     SovereigntyUpgrade,  # Requires: ItemType
     Stargate,
     Planet,
+    PlanetResource,  # Requires: Planet, ItemType
     Moon,
     # Lore / reference
     Archetype,

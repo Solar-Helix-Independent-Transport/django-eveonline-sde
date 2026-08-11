@@ -191,6 +191,8 @@ class ItemType(TypeBase):
         metaGroupID : int
         variationParentTypeID : int
         factionID : int
+        packagedVolume: float
+        techLevel: int
 
     """
     # JsonL Params

@@ -8,7 +8,7 @@ from django.db import models
 
 # Django EVE SDE
 from eve_sde.models.base import JSONModel
-from eve_sde.models.types import TypeBase
+from eve_sde.models.types import ItemType, TypeBase
 
 
 class AccountingEntryType(TypeBase):
@@ -192,3 +192,40 @@ class CorporationRoleGroupMembership(JSONModel):
 
     def __str__(self):
         return f"{self.corporation_role.name} ({self.role_group.name})"
+
+
+class MetenoxMoonDrill(JSONModel):
+    """
+    metenoxMoonDrill.jsonl
+        _key : int
+        miningCycleTime : int
+        miningEfficiency : float
+        reagentsConsumedPerCycle : int
+    """
+    # JsonL Params
+    class Import:
+        filename = "metenoxMoonDrill.jsonl"
+        lang_fields = False
+        data_map = (
+            ("mining_cycle_time", "miningCycleTime"),
+            ("mining_efficiency", "miningEfficiency"),
+            ("reagents_consumed_per_cycle", "reagentsConsumedPerCycle"),
+        )
+        update_fields = False
+        custom_names = False
+
+    item_type = models.OneToOneField(
+        to=ItemType,
+        on_delete=models.CASCADE,
+        related_name="metenox_moon_drill",
+        primary_key=True,
+    )
+    mining_cycle_time = models.IntegerField(null=True, blank=True, default=None)
+    mining_efficiency = models.FloatField(null=True, blank=True, default=None)
+    reagents_consumed_per_cycle = models.IntegerField(null=True, blank=True, default=None)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return f"{self.item_type.name} ({self.item_type.id})"

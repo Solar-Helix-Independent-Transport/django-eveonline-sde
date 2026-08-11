@@ -10,6 +10,8 @@ Tests for the standalone lookup models in misc.py:
     as ItemTypeMaterials/TypeDogma/TypeEffect in types.py. roleGroupIDs is
     itself missing on one role in the SDE source, so that role should load
     with zero membership rows rather than failing.
+- MetenoxMoonDrill: keyed straight off ItemType's pk via a OneToOneField,
+    same shape as SovereigntyUpgrade in sovereignty.py.
 """
 # Standard Library
 import json
@@ -26,8 +28,10 @@ from eve_sde.models.misc import (
     CorporationRole,
     CorporationRoleGroup,
     CorporationRoleGroupMembership,
+    MetenoxMoonDrill,
     NotificationType,
 )
+from eve_sde.models.types import ItemType
 
 
 class AccountingEntryTypeLoadTests(TestCase):
@@ -229,3 +233,35 @@ class CorporationRoleGroupMembershipLoadTests(TestCase):
             corporation_role=role, role_group=group
         )
         self.assertEqual(str(membership), "Project Hangar Take (General)")
+
+
+class MetenoxMoonDrillLoadTests(TestCase):
+
+    def test_loads_keyed_off_the_item_type_pk(self):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
+        with open(os.path.join(tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+
+        ItemType.objects.create(id=81826, name="Metenox Moon Drill")
+
+        row = {
+            "_key": 81826,
+            "miningCycleTime": 3600,
+            "miningEfficiency": 0.4,
+            "reagentsConsumedPerCycle": 200,
+        }
+        with open(os.path.join(tmpdir, "metenoxMoonDrill.jsonl"), "w") as f:
+            f.write(json.dumps(row) + "\n")
+
+        MetenoxMoonDrill.load_from_sde(tmpdir)
+
+        drill = MetenoxMoonDrill.objects.get(pk=81826)
+        self.assertEqual(drill.mining_cycle_time, 3600)
+        self.assertEqual(drill.mining_efficiency, 0.4)
+        self.assertEqual(drill.reagents_consumed_per_cycle, 200)
+
+    def test_str_includes_item_type_name_and_id(self):
+        item_type = ItemType.objects.create(id=81826, name="Metenox Moon Drill")
+        drill = MetenoxMoonDrill.objects.create(item_type=item_type)
+        self.assertEqual(str(drill), "Metenox Moon Drill (81826)")

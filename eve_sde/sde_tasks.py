@@ -33,6 +33,7 @@ from eve_sde.models.misc import (
     CorporationRole,
     CorporationRoleGroup,
     CorporationRoleGroupMembership,
+    MetenoxMoonDrill,
     NotificationType,
 )
 from eve_sde.models.sovereignty import SovereigntyUpgrade
@@ -91,6 +92,7 @@ SDE_PARTS_TO_UPDATE = [
     CorporationRoleGroup,
     CorporationRole,
     CorporationRoleGroupMembership,  # Requires: CorporationRole, CorporationRoleGroup
+    MetenoxMoonDrill,  # Requires: ItemType
 ]
 
 SDE_URL = "https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip"

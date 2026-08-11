@@ -54,6 +54,11 @@ landmarks.jsonl
         position.z : float
     iconID : int
     locationID : int
+metenoxMoonDrill.jsonl
+    _key : int
+    miningCycleTime : int
+    miningEfficiency : float
+    reagentsConsumedPerCycle : int
 corporationRoles.jsonl
     _key : int
     description : dict

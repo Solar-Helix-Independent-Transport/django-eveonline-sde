@@ -302,6 +302,15 @@ class CorporationRoleGroupMembershipAdmin(NoEdit):
         return super().get_queryset(request).select_related('corporation_role', 'role_group')
 
 
+@admin.register(models.MetenoxMoonDrill)
+class MetenoxMoonDrillAdmin(NoEdit):
+    list_display = ('item_type', 'mining_cycle_time', 'mining_efficiency', 'reagents_consumed_per_cycle')
+    search_fields = ('item_type__name', )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('item_type')
+
+
 @admin.register(models.BlueprintActivity)
 class BlueprintActivityAdmin(NoEdit):
     list_display = ('blueprint_item_type', 'activity', 'time', 'max_production_limit')

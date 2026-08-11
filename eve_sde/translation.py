@@ -6,6 +6,7 @@ from eve_sde.models.freelance import FreelanceJobSchema, FreelanceJobSchemaParam
 from eve_sde.models.lore import Archetype
 from eve_sde.models.map import (
     Constellation,
+    Landmark,
     Moon,
     NPCStation,
     Planet,
@@ -38,6 +39,7 @@ translator.register(ItemMarketGroup, NameAndDescriptionTranslationOptions)
 translator.register(ItemType, NameAndDescriptionTranslationOptions)
 translator.register(Archetype, NameAndDescriptionTranslationOptions)
 translator.register(CorporationRole, NameAndDescriptionTranslationOptions)
+translator.register(Landmark, NameAndDescriptionTranslationOptions)
 
 
 class NameTranslationOptions(TranslationOptions):

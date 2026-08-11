@@ -20,6 +20,7 @@ from eve_sde.models.industry import (
 from eve_sde.models.lore import Archetype
 from eve_sde.models.map import (
     Constellation,
+    Landmark,
     Moon,
     NPCStation,
     Planet,
@@ -78,6 +79,7 @@ SDE_PARTS_TO_UPDATE = [
     Stargate,
     Planet,
     Moon,
+    Landmark,  # Requires: SolarSystem
     # Lore / reference
     Archetype,
     # Freelance Jobs

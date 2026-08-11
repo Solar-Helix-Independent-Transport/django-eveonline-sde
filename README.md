@@ -29,6 +29,7 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
 - Moon
 - NPC Station
 - Stargate
+- Landmark
 - Item Market Groups
 - Item Groups
 - Item Categories

@@ -652,3 +652,47 @@ class Moon(UniverseBase):
         return (
             f"{planet} - {moon} {json_data.get('orbitIndex')}"
         )
+
+
+class Landmark(UniverseBase):
+    """
+    landmarks.jsonl
+        _key : int
+        description : dict
+            ...
+        name : dict
+            ...
+        position : dict
+            position.x : float
+            position.y : float
+            position.z : float
+        iconID : int
+        locationID : int
+    """
+    # JsonL Params
+    class Import:
+        filename = "landmarks.jsonl"
+        lang_fields = ["name", "description"]
+        data_map = (
+            ("name", "name.en"),
+            ("description", "description.en"),
+            ("icon_id", "iconID"),
+            ("solar_system_id", "locationID"),
+            ("x", "position.x"),
+            ("y", "position.y"),
+            ("z", "position.z"),
+        )
+        update_fields = False
+        custom_names = False
+
+    # Model Fields
+    description = models.TextField(null=True, blank=True, default=None)  # _en
+    icon_id = models.IntegerField(null=True, blank=True, default=None)
+    solar_system = models.ForeignKey(
+        SolarSystem,
+        on_delete=models.SET_NULL,
+        related_name="landmarks",
+        null=True,
+        blank=True,
+        default=None
+    )

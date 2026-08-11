@@ -28,6 +28,32 @@ accountingEntryTypes.jsonl
         description.ko : str
         description.ru : str
         description.zh : str
+landmarks.jsonl
+    _key : int
+    description : dict
+        description.de : str
+        description.en : str
+        description.es : str
+        description.fr : str
+        description.ja : str
+        description.ko : str
+        description.ru : str
+        description.zh : str
+    name : dict
+        name.de : str
+        name.en : str
+        name.es : str
+        name.fr : str
+        name.ja : str
+        name.ko : str
+        name.ru : str
+        name.zh : str
+    position : dict
+        position.x : float
+        position.y : float
+        position.z : float
+    iconID : int
+    locationID : int
 corporationRoles.jsonl
     _key : int
     description : dict

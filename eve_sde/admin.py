@@ -131,6 +131,15 @@ class MoonAdmin(NoEdit):
         )
 
 
+@admin.register(models.Landmark)
+class LandmarkAdmin(NoEdit):
+    list_display = ('name', 'solar_system')
+    search_fields = ('name', 'solar_system__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('solar_system')
+
+
 @admin.register(models.Planet)
 class PlanetAdmin(NoEdit):
     list_display = ['name', 'get_region', 'get_constellation', 'get_system']

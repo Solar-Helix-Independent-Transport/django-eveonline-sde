@@ -48,6 +48,8 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
 - Sovereignty Upgrades
 - Accounting Entry Types
 - Notification Types
+- Corporation Role Groups
+- Corporation Roles
 
 ## Setup
 

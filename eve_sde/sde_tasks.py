@@ -27,7 +27,13 @@ from eve_sde.models.map import (
     SolarSystem,
     Stargate,
 )
-from eve_sde.models.misc import AccountingEntryType, NotificationType
+from eve_sde.models.misc import (
+    AccountingEntryType,
+    CorporationRole,
+    CorporationRoleGroup,
+    CorporationRoleGroupMembership,
+    NotificationType,
+)
 from eve_sde.models.sovereignty import SovereigntyUpgrade
 from eve_sde.models.types import (
     DogmaAttribute,
@@ -80,6 +86,9 @@ SDE_PARTS_TO_UPDATE = [
     # Misc
     AccountingEntryType,
     NotificationType,
+    CorporationRoleGroup,
+    CorporationRole,
+    CorporationRoleGroupMembership,  # Requires: CorporationRole, CorporationRoleGroup
 ]
 
 SDE_URL = "https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip"

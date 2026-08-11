@@ -272,6 +272,27 @@ class NotificationTypeAdmin(NoEdit):
     search_fields = ('name', 'internal_name')
 
 
+@admin.register(models.CorporationRoleGroup)
+class CorporationRoleGroupAdmin(NoEdit):
+    list_display = ('name', 'applies_to', 'is_divisional', 'is_locational')
+    search_fields = ('name', )
+
+
+@admin.register(models.CorporationRole)
+class CorporationRoleAdmin(NoEdit):
+    list_display = ('name', 'short_name')
+    search_fields = ('name', 'short_name')
+
+
+@admin.register(models.CorporationRoleGroupMembership)
+class CorporationRoleGroupMembershipAdmin(NoEdit):
+    list_display = ('corporation_role', 'role_group')
+    search_fields = ('corporation_role__name', 'role_group__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('corporation_role', 'role_group')
+
+
 @admin.register(models.BlueprintActivity)
 class BlueprintActivityAdmin(NoEdit):
     list_display = ('blueprint_item_type', 'activity', 'time', 'max_production_limit')

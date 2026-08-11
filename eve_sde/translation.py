@@ -12,7 +12,12 @@ from eve_sde.models.map import (
     Region,
     SolarSystem,
 )
-from eve_sde.models.misc import AccountingEntryType, NotificationType
+from eve_sde.models.misc import (
+    AccountingEntryType,
+    CorporationRole,
+    CorporationRoleGroup,
+    NotificationType,
+)
 from eve_sde.models.types import (
     DogmaAttribute,
     DogmaEffect,
@@ -32,6 +37,7 @@ translator.register(Region, NameAndDescriptionTranslationOptions)
 translator.register(ItemMarketGroup, NameAndDescriptionTranslationOptions)
 translator.register(ItemType, NameAndDescriptionTranslationOptions)
 translator.register(Archetype, NameAndDescriptionTranslationOptions)
+translator.register(CorporationRole, NameAndDescriptionTranslationOptions)
 
 
 class NameTranslationOptions(TranslationOptions):
@@ -46,6 +52,7 @@ translator.register(Moon, NameTranslationOptions)
 translator.register(ItemCategory, NameTranslationOptions)
 translator.register(ItemGroup, NameTranslationOptions)
 translator.register(NotificationType, NameTranslationOptions)
+translator.register(CorporationRoleGroup, NameTranslationOptions)
 
 
 class DogmaUnitTranslationOptions(TranslationOptions):

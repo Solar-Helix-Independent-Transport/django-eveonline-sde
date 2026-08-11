@@ -52,6 +52,10 @@ from eve_sde.models.types import (
     ItemTypeMaterials,
     TypeDogma,
     TypeEffect,
+    TypeList,
+    TypeListCategory,
+    TypeListGroup,
+    TypeListType,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,6 +68,10 @@ SDE_PARTS_TO_UPDATE = [
     ItemMarketGroup,
     ItemType,  # Requires: ItemGroup and ItemMarketGroup
     ItemTypeMaterials,
+    TypeList,
+    TypeListType,  # Requires: TypeList, ItemType
+    TypeListGroup,  # Requires: TypeList, ItemGroup
+    TypeListCategory,  # Requires: TypeList, ItemCategory
     BlueprintActivity,
     BlueprintActivityProduct,
     BlueprintActivityMaterial,

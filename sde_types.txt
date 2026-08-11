@@ -54,6 +54,33 @@ landmarks.jsonl
         position.z : float
     iconID : int
     locationID : int
+typeLists.jsonl
+    _key : int
+    includedTypeIDs : list
+    name : str
+    includedGroupIDs : list
+    includedCategoryIDs : list
+    displayName : dict
+        displayName.de : str
+        displayName.en : str
+        displayName.es : str
+        displayName.fr : str
+        displayName.ja : str
+        displayName.ko : str
+        displayName.ru : str
+        displayName.zh : str
+    excludedGroupIDs : list
+    excludedTypeIDs : list
+    displayDescription : dict
+        displayDescription.de : str
+        displayDescription.en : str
+        displayDescription.es : str
+        displayDescription.fr : str
+        displayDescription.ja : str
+        displayDescription.ko : str
+        displayDescription.ru : str
+        displayDescription.zh : str
+    excludedCategoryIDs : list
 skillPlans.jsonl
     _key : int
     careerPathID : int

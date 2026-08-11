@@ -55,6 +55,10 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
 - Skill Plans
   - Milestones
   - Skill Requirements
+- Type Lists
+  - Types
+  - Groups
+  - Categories
 
 ## Setup
 

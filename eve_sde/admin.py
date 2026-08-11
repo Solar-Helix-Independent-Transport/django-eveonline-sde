@@ -335,6 +335,39 @@ class SkillPlanSkillRequirementAdmin(NoEdit):
         return super().get_queryset(request).select_related('skill_plan', 'item_type')
 
 
+@admin.register(models.TypeList)
+class TypeListAdmin(NoEdit):
+    list_display = ('name', 'internal_name')
+    search_fields = ('name', 'internal_name')
+
+
+@admin.register(models.TypeListType)
+class TypeListTypeAdmin(NoEdit):
+    list_display = ('type_list', 'item_type', 'excluded')
+    search_fields = ('type_list__name', 'type_list__internal_name', 'item_type__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('type_list', 'item_type')
+
+
+@admin.register(models.TypeListGroup)
+class TypeListGroupAdmin(NoEdit):
+    list_display = ('type_list', 'item_group', 'excluded')
+    search_fields = ('type_list__name', 'type_list__internal_name', 'item_group__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('type_list', 'item_group')
+
+
+@admin.register(models.TypeListCategory)
+class TypeListCategoryAdmin(NoEdit):
+    list_display = ('type_list', 'item_category', 'excluded')
+    search_fields = ('type_list__name', 'type_list__internal_name', 'item_category__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('type_list', 'item_category')
+
+
 @admin.register(models.BlueprintActivity)
 class BlueprintActivityAdmin(NoEdit):
     list_display = ('blueprint_item_type', 'activity', 'time', 'max_production_limit')

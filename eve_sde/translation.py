@@ -28,6 +28,7 @@ from eve_sde.models.types import (
     ItemGroup,
     ItemMarketGroup,
     ItemType,
+    TypeList,
 )
 
 
@@ -42,6 +43,7 @@ translator.register(Archetype, NameAndDescriptionTranslationOptions)
 translator.register(CorporationRole, NameAndDescriptionTranslationOptions)
 translator.register(Landmark, NameAndDescriptionTranslationOptions)
 translator.register(SkillPlan, NameAndDescriptionTranslationOptions)
+translator.register(TypeList, NameAndDescriptionTranslationOptions)
 
 
 class NameTranslationOptions(TranslationOptions):

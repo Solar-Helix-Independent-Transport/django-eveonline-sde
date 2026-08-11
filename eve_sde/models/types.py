@@ -191,6 +191,8 @@ class ItemType(TypeBase):
         metaGroupID : int
         variationParentTypeID : int
         factionID : int
+        packagedVolume: float
+        techLevel: int
 
     """
     # JsonL Params
@@ -217,14 +219,11 @@ class ItemType(TypeBase):
             ("sound_id", "soundID"),
             ("variation_parent_type_id", "variationParentTypeID"),
             ("volume", "volume"),
-            ("packaged_volume", "packaged_volume"),  # from extras
+            ("packaged_volume", "packagedVolume"),
             ("tech_level", "techLevel"),
         )
         update_fields = False
         custom_names = False
-        extra_data = (
-            ("https://sde.hoboleaks.space/tq/repackagedvolumes.json", "id_dict", ("packaged_volume",)),
-        )
 
     # Model Fields
     base_price = models.FloatField(null=True, blank=True, default=None)

@@ -1,3 +1,33 @@
+accountingEntryTypes.jsonl
+    _key : int
+    internalName : str
+    name : dict
+        name.de : str
+        name.en : str
+        name.es : str
+        name.fr : str
+        name.ja : str
+        name.ko : str
+        name.ru : str
+        name.zh : str
+    journalMessage : dict
+        journalMessage.de : str
+        journalMessage.en : str
+        journalMessage.es : str
+        journalMessage.fr : str
+        journalMessage.ja : str
+        journalMessage.ko : str
+        journalMessage.ru : str
+        journalMessage.zh : str
+    description : dict
+        description.de : str
+        description.en : str
+        description.es : str
+        description.fr : str
+        description.ja : str
+        description.ko : str
+        description.ru : str
+        description.zh : str
 typeDogma.jsonl
     _key : int
     dogmaAttributes : list

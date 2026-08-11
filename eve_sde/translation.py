@@ -13,6 +13,7 @@ from eve_sde.models.map import (
     SolarSystem,
 )
 from eve_sde.models.types import (
+    AccountingEntryType,
     DogmaAttribute,
     DogmaEffect,
     DogmaUnit,
@@ -79,3 +80,10 @@ class FreelanceJobSchemaParameterTranslationOptions(TranslationOptions):
 
 
 translator.register(FreelanceJobSchemaParameter, FreelanceJobSchemaParameterTranslationOptions)
+
+
+class AccountingEntryTypeTranslationOptions(TranslationOptions):
+    fields = ("name", "description", "journal_message")
+
+
+translator.register(AccountingEntryType, AccountingEntryTypeTranslationOptions)

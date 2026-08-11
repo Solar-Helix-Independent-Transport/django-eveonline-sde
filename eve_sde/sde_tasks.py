@@ -29,6 +29,7 @@ from eve_sde.models.map import (
 )
 from eve_sde.models.sovereignty import SovereigntyUpgrade
 from eve_sde.models.types import (
+    AccountingEntryType,
     DogmaAttribute,
     DogmaAttributeCategory,
     DogmaEffect,
@@ -61,6 +62,7 @@ SDE_PARTS_TO_UPDATE = [
     DogmaEffect,
     TypeDogma,
     TypeEffect,
+    AccountingEntryType,
     # Map
     Region,
     Constellation,

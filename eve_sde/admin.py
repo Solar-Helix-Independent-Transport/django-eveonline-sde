@@ -254,6 +254,12 @@ class TypeEffectAdmin(NoEdit):
         return super().get_queryset(request).select_related('item_type', 'dogma_effect')
 
 
+@admin.register(models.AccountingEntryType)
+class AccountingEntryTypeAdmin(NoEdit):
+    list_display = ('name', 'internal_name')
+    search_fields = ('name', 'internal_name')
+
+
 @admin.register(models.Archetype)
 class ArchetypeAdmin(NoEdit):
     list_display = ('name', )

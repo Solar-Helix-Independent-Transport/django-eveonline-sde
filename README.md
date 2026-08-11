@@ -52,6 +52,9 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
 - Corporation Role Groups
 - Corporation Roles
 - Metenox Moon Drill
+- Skill Plans
+  - Milestones
+  - Skill Requirements
 
 ## Setup
 

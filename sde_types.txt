@@ -54,6 +54,36 @@ landmarks.jsonl
         position.z : float
     iconID : int
     locationID : int
+skillPlans.jsonl
+    _key : int
+    careerPathID : int
+    description : dict
+        description.de : str
+        description.en : str
+        description.es : str
+        description.fr : str
+        description.ja : str
+        description.ko : str
+        description.ru : str
+        description.zh : str
+    factionID : int
+    internalName : str
+    milestones : list
+        level : int
+        typeID : int
+    name : dict
+        name.de : str
+        name.en : str
+        name.es : str
+        name.fr : str
+        name.ja : str
+        name.ko : str
+        name.ru : str
+        name.zh : str
+    skillRequirements : list
+        level : int
+        typeID : int
+    npcCorporationDivision : int
 metenoxMoonDrill.jsonl
     _key : int
     miningCycleTime : int

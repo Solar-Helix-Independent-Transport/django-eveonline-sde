@@ -18,6 +18,7 @@ from eve_sde.models.misc import (
     CorporationRole,
     CorporationRoleGroup,
     NotificationType,
+    SkillPlan,
 )
 from eve_sde.models.types import (
     DogmaAttribute,
@@ -40,6 +41,7 @@ translator.register(ItemType, NameAndDescriptionTranslationOptions)
 translator.register(Archetype, NameAndDescriptionTranslationOptions)
 translator.register(CorporationRole, NameAndDescriptionTranslationOptions)
 translator.register(Landmark, NameAndDescriptionTranslationOptions)
+translator.register(SkillPlan, NameAndDescriptionTranslationOptions)
 
 
 class NameTranslationOptions(TranslationOptions):

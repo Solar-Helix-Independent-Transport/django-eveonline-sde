@@ -12,6 +12,10 @@ Tests for the standalone lookup models in misc.py:
     with zero membership rows rather than failing.
 - MetenoxMoonDrill: keyed straight off ItemType's pk via a OneToOneField,
     same shape as SovereigntyUpgrade in sovereignty.py.
+- SkillPlan/SkillPlanMilestone/SkillPlanSkillRequirement: milestones and
+    skillRequirements are two independent lists on the same skillPlans.jsonl
+    row, each flattened into its own join model, same flatten-and-wipe
+    pattern as CorporationRoleGroupMembership.
 """
 # Standard Library
 import json
@@ -30,6 +34,9 @@ from eve_sde.models.misc import (
     CorporationRoleGroupMembership,
     MetenoxMoonDrill,
     NotificationType,
+    SkillPlan,
+    SkillPlanMilestone,
+    SkillPlanSkillRequirement,
 )
 from eve_sde.models.types import ItemType
 
@@ -265,3 +272,88 @@ class MetenoxMoonDrillLoadTests(TestCase):
         item_type = ItemType.objects.create(id=81826, name="Metenox Moon Drill")
         drill = MetenoxMoonDrill.objects.create(item_type=item_type)
         self.assertEqual(str(drill), "Metenox Moon Drill (81826)")
+
+
+class SkillPlanLoadTests(TestCase):
+
+    def test_loads_name_description_and_raw_ids(self):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
+        with open(os.path.join(tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+
+        row = {
+            "_key": 4,
+            "internalName": "Minmatar Soldier of Fortune - Faction Militia",
+            "name": {"en": "Minmatar Militia Fighter"},
+            "description": {"en": "Battle for the freedom of the Minmatar Republic."},
+            "careerPathID": 7,
+            "factionID": 500002,
+            "milestones": [],
+            "skillRequirements": [],
+        }
+        with open(os.path.join(tmpdir, "skillPlans.jsonl"), "w") as f:
+            f.write(json.dumps(row) + "\n")
+
+        SkillPlan.load_from_sde(tmpdir)
+
+        plan = SkillPlan.objects.get(pk=4)
+        self.assertEqual(plan.name, "Minmatar Militia Fighter")
+        self.assertEqual(plan.internal_name, "Minmatar Soldier of Fortune - Faction Militia")
+        self.assertEqual(plan.description, "Battle for the freedom of the Minmatar Republic.")
+        self.assertEqual(plan.career_path_id_raw, 7)
+        self.assertEqual(plan.faction_id_raw, 500002)
+        self.assertIsNone(plan.npc_corporation_division_id_raw)
+
+
+class SkillPlanMilestoneAndSkillRequirementLoadTests(TestCase):
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
+        with open(os.path.join(self.tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+
+        SkillPlan.objects.create(id=4, name="Minmatar Militia Fighter")
+        ItemType.objects.create(id=3329, name="Gunnery")
+        ItemType.objects.create(id=3327, name="Small Hybrid Turret")
+
+    def _write_skill_plan(self, milestones, skill_requirements):
+        row = {"_key": 4, "milestones": milestones, "skillRequirements": skill_requirements}
+        with open(os.path.join(self.tmpdir, "skillPlans.jsonl"), "w") as f:
+            f.write(json.dumps(row) + "\n")
+
+    def test_flattens_milestones_independently_of_skill_requirements(self):
+        self._write_skill_plan(
+            milestones=[{"level": 3, "typeID": 3329}],
+            skill_requirements=[{"level": 1, "typeID": 3327}],
+        )
+
+        SkillPlanMilestone.load_from_sde(self.tmpdir)
+        SkillPlanSkillRequirement.load_from_sde(self.tmpdir)
+
+        self.assertEqual(SkillPlanMilestone.objects.count(), 1)
+        milestone = SkillPlanMilestone.objects.get()
+        self.assertEqual(milestone.item_type_id, 3329)
+        self.assertEqual(milestone.level, 3)
+        self.assertEqual(str(milestone), "Minmatar Militia Fighter (Gunnery 3)")
+
+        self.assertEqual(SkillPlanSkillRequirement.objects.count(), 1)
+        requirement = SkillPlanSkillRequirement.objects.get()
+        self.assertEqual(requirement.item_type_id, 3327)
+        self.assertEqual(requirement.level, 1)
+        self.assertEqual(str(requirement), "Minmatar Militia Fighter (Small Hybrid Turret 1)")
+
+    def test_rerun_wipes_and_reloads_instead_of_duplicating(self):
+        self._write_skill_plan(
+            milestones=[{"level": 3, "typeID": 3329}],
+            skill_requirements=[{"level": 1, "typeID": 3327}],
+        )
+
+        SkillPlanMilestone.load_from_sde(self.tmpdir)
+        SkillPlanMilestone.load_from_sde(self.tmpdir)
+        SkillPlanSkillRequirement.load_from_sde(self.tmpdir)
+        SkillPlanSkillRequirement.load_from_sde(self.tmpdir)
+
+        self.assertEqual(SkillPlanMilestone.objects.count(), 1)
+        self.assertEqual(SkillPlanSkillRequirement.objects.count(), 1)

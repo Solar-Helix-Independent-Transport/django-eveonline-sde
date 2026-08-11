@@ -229,3 +229,173 @@ class MetenoxMoonDrill(JSONModel):
 
     def __str__(self):
         return f"{self.item_type.name} ({self.item_type.id})"
+
+
+class SkillPlan(TypeBase):
+    """
+    skillPlans.jsonl
+        _key : int
+        careerPathID : int
+        description : dict
+            ...
+        factionID : int
+        internalName : str
+        * milestones : list
+            level : int
+            typeID : int
+        name : dict
+            ...
+        * skillRequirements : list
+            level : int
+            typeID : int
+        npcCorporationDivision : int
+    """
+    # JsonL Params
+    class Import:
+        filename = "skillPlans.jsonl"
+        lang_fields = ["name", "description"]
+        data_map = (
+            ("name", "name.en"),
+            ("description", "description.en"),
+            ("internal_name", "internalName"),
+            ("career_path_id_raw", "careerPathID"),
+            ("faction_id_raw", "factionID"),
+            ("npc_corporation_division_id_raw", "npcCorporationDivision"),
+        )
+        update_fields = False
+        custom_names = False
+
+    # Model Fields
+    internal_name = models.CharField(max_length=250, null=True, blank=True, default=None)
+    description = models.TextField(null=True, blank=True, default=None)  # _en
+    career_path_id_raw = models.IntegerField(null=True, blank=True, default=None)
+    faction_id_raw = models.IntegerField(null=True, blank=True, default=None)
+    npc_corporation_division_id_raw = models.IntegerField(null=True, blank=True, default=None)
+
+
+class SkillPlanMilestone(JSONModel):
+    """
+    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    skillPlans.jsonl
+        _key : int
+        * milestones : list
+            level : int
+            typeID : int
+    """
+    # JsonL Params
+    class Import:
+        filename = "skillPlans.jsonl"
+        lang_fields = False
+        data_map = (
+            ("skill_plan_id", "_key"),
+            ("item_type_id", "typeID"),
+            ("level", "level"),
+        )
+        update_fields = False
+        custom_names = False
+
+    skill_plan = models.ForeignKey(
+        SkillPlan,
+        on_delete=models.CASCADE,
+        related_name="milestones",
+        null=True,
+        blank=True,
+        default=None
+    )
+    item_type = models.ForeignKey(
+        ItemType,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
+    level = models.IntegerField(null=True, blank=True, default=None)
+
+    @classmethod
+    def from_jsonl(cls, json_data, name_lookup=False):
+        _out = []
+        _key = {"_key": json_data.get("_key")}
+
+        for milestone in json_data.get("milestones", []):
+            _out.append(cls.map_to_model(milestone | _key, name_lookup=name_lookup, pk=False))
+
+        return _out
+
+    @classmethod
+    def load_from_sde(cls, folder_name):
+        gate_qry = cls.objects.all()
+        if gate_qry.exists():
+            # speed and we are not caring about f-keys or signals on these models
+            gate_qry._raw_delete(gate_qry.db)
+        super().load_from_sde(folder_name)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return f"{self.skill_plan.name} ({self.item_type.name} {self.level})"
+
+
+class SkillPlanSkillRequirement(JSONModel):
+    """
+    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    skillPlans.jsonl
+        _key : int
+        * skillRequirements : list
+            level : int
+            typeID : int
+    """
+    # JsonL Params
+    class Import:
+        filename = "skillPlans.jsonl"
+        lang_fields = False
+        data_map = (
+            ("skill_plan_id", "_key"),
+            ("item_type_id", "typeID"),
+            ("level", "level"),
+        )
+        update_fields = False
+        custom_names = False
+
+    skill_plan = models.ForeignKey(
+        SkillPlan,
+        on_delete=models.CASCADE,
+        related_name="skill_requirements",
+        null=True,
+        blank=True,
+        default=None
+    )
+    item_type = models.ForeignKey(
+        ItemType,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
+    level = models.IntegerField(null=True, blank=True, default=None)
+
+    @classmethod
+    def from_jsonl(cls, json_data, name_lookup=False):
+        _out = []
+        _key = {"_key": json_data.get("_key")}
+
+        for requirement in json_data.get("skillRequirements", []):
+            _out.append(cls.map_to_model(requirement | _key, name_lookup=name_lookup, pk=False))
+
+        return _out
+
+    @classmethod
+    def load_from_sde(cls, folder_name):
+        gate_qry = cls.objects.all()
+        if gate_qry.exists():
+            # speed and we are not caring about f-keys or signals on these models
+            gate_qry._raw_delete(gate_qry.db)
+        super().load_from_sde(folder_name)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return f"{self.skill_plan.name} ({self.item_type.name} {self.level})"

@@ -35,6 +35,9 @@ from eve_sde.models.misc import (
     CorporationRoleGroupMembership,
     MetenoxMoonDrill,
     NotificationType,
+    SkillPlan,
+    SkillPlanMilestone,
+    SkillPlanSkillRequirement,
 )
 from eve_sde.models.sovereignty import SovereigntyUpgrade
 from eve_sde.models.types import (
@@ -93,6 +96,9 @@ SDE_PARTS_TO_UPDATE = [
     CorporationRole,
     CorporationRoleGroupMembership,  # Requires: CorporationRole, CorporationRoleGroup
     MetenoxMoonDrill,  # Requires: ItemType
+    SkillPlan,
+    SkillPlanMilestone,  # Requires: SkillPlan, ItemType
+    SkillPlanSkillRequirement,  # Requires: SkillPlan, ItemType
 ]
 
 SDE_URL = "https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip"

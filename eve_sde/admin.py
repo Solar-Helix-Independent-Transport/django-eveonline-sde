@@ -311,6 +311,30 @@ class MetenoxMoonDrillAdmin(NoEdit):
         return super().get_queryset(request).select_related('item_type')
 
 
+@admin.register(models.SkillPlan)
+class SkillPlanAdmin(NoEdit):
+    list_display = ('name', 'internal_name')
+    search_fields = ('name', 'internal_name')
+
+
+@admin.register(models.SkillPlanMilestone)
+class SkillPlanMilestoneAdmin(NoEdit):
+    list_display = ('skill_plan', 'item_type', 'level')
+    search_fields = ('skill_plan__name', 'item_type__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('skill_plan', 'item_type')
+
+
+@admin.register(models.SkillPlanSkillRequirement)
+class SkillPlanSkillRequirementAdmin(NoEdit):
+    list_display = ('skill_plan', 'item_type', 'level')
+    search_fields = ('skill_plan__name', 'item_type__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('skill_plan', 'item_type')
+
+
 @admin.register(models.BlueprintActivity)
 class BlueprintActivityAdmin(NoEdit):
     list_display = ('blueprint_item_type', 'activity', 'time', 'max_production_limit')

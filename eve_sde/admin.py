@@ -266,6 +266,12 @@ class ArchetypeAdmin(NoEdit):
     search_fields = ('name', )
 
 
+@admin.register(models.NotificationType)
+class NotificationTypeAdmin(NoEdit):
+    list_display = ('name', 'internal_name')
+    search_fields = ('name', 'internal_name')
+
+
 @admin.register(models.BlueprintActivity)
 class BlueprintActivityAdmin(NoEdit):
     list_display = ('blueprint_item_type', 'activity', 'time', 'max_production_limit')

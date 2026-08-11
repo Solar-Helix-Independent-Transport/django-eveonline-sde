@@ -7,8 +7,6 @@ Tests for the remaining under-covered models in types.py:
 - ItemTypeMaterials/TypeDogma/TypeEffect: each flattens a nested list out of
     one jsonl row into several model rows, and each wipes+reloads on every
     run rather than diffing (same pattern as the industry.py blueprint models).
-- AccountingEntryType: journalMessage/description are optional per-row in the
-    SDE source, so a row lacking them should still load cleanly.
 """
 # Standard Library
 import json
@@ -21,7 +19,6 @@ from django.test import TestCase
 
 # Django EVE SDE
 from eve_sde.models.types import (
-    AccountingEntryType,
     DogmaAttribute,
     DogmaEffect,
     ItemCategory,
@@ -166,47 +163,3 @@ class TypeEffectTests(TestCase):
         entry = TypeEffect.objects.get()
         self.assertTrue(entry.is_default)
         self.assertEqual(str(entry), "Widget (1) (60: onlineEffect)")
-
-
-class AccountingEntryTypeLoadTests(TestCase):
-
-    def test_loads_internal_name_and_lang_fields(self):
-        tmpdir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
-        with open(os.path.join(tmpdir, "_sde.jsonl"), "w") as f:
-            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
-
-        row = {
-            "_key": 1,
-            "internalName": "player_trading",
-            "name": {"en": "Player Trading", "de": "Spieler-Handel"},
-            "journalMessage": {"en": "Direct trade between {name1} and {name2}"},
-            "description": {"en": "Player to player trading"},
-        }
-        with open(os.path.join(tmpdir, "accountingEntryTypes.jsonl"), "w") as f:
-            f.write(json.dumps(row) + "\n")
-
-        AccountingEntryType.load_from_sde(tmpdir)
-
-        entry = AccountingEntryType.objects.get(pk=1)
-        self.assertEqual(entry.internal_name, "player_trading")
-        self.assertEqual(entry.name, "Player Trading")
-        self.assertEqual(entry.name_de, "Spieler-Handel")
-        self.assertEqual(entry.journal_message, "Direct trade between {name1} and {name2}")
-        self.assertEqual(entry.description, "Player to player trading")
-
-    def test_journal_message_and_description_are_optional(self):
-        tmpdir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
-        with open(os.path.join(tmpdir, "_sde.jsonl"), "w") as f:
-            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
-
-        row = {"_key": 0, "internalName": "undefined", "name": {"en": "Undefined"}}
-        with open(os.path.join(tmpdir, "accountingEntryTypes.jsonl"), "w") as f:
-            f.write(json.dumps(row) + "\n")
-
-        AccountingEntryType.load_from_sde(tmpdir)
-
-        entry = AccountingEntryType.objects.get(pk=0)
-        self.assertIsNone(entry.journal_message)
-        self.assertIsNone(entry.description)

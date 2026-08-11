@@ -539,37 +539,6 @@ class DogmaEffect(TypeBase):
     resistance_attribute_id_raw = models.IntegerField(null=True, blank=True, default=None)
 
 
-class AccountingEntryType(TypeBase):
-    """
-    accountingEntryTypes.jsonl
-        _key : int
-        internalName : str
-        name : dict
-            ...
-        journalMessage : dict
-            ...
-        description : dict
-            ...
-    """
-    # JsonL Params
-    class Import:
-        filename = "accountingEntryTypes.jsonl"
-        lang_fields = ["name", "description", ("journal_message", "journalMessage")]
-        data_map = (
-            ("internal_name", "internalName"),
-            ("name", "name.en"),
-            ("description", "description.en"),
-            ("journal_message", "journalMessage.en"),
-        )
-        update_fields = False
-        custom_names = False
-
-    # Model Fields
-    internal_name = models.CharField(max_length=250, null=True, blank=True, default=None)
-    description = models.TextField(null=True, blank=True, default=None)  # _en
-    journal_message = models.TextField(null=True, blank=True, default=None)  # _en
-
-
 class TypeEffect(JSONModel):
     """
     typeDogma.jsonl

@@ -28,6 +28,18 @@ accountingEntryTypes.jsonl
         description.ko : str
         description.ru : str
         description.zh : str
+notificationTypes.jsonl
+    _key : int
+    displayName : dict
+        displayName.de : str
+        displayName.en : str
+        displayName.es : str
+        displayName.fr : str
+        displayName.ja : str
+        displayName.ko : str
+        displayName.ru : str
+        displayName.zh : str
+    internalName : str
 typeDogma.jsonl
     _key : int
     dogmaAttributes : list

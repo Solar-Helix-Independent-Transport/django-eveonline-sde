@@ -12,6 +12,7 @@ from eve_sde.models.freelance import *
 from eve_sde.models.industry import *
 from eve_sde.models.lore import *
 from eve_sde.models.map import *
+from eve_sde.models.misc import *
 from eve_sde.models.sovereignty import *
 from eve_sde.models.types import *
 

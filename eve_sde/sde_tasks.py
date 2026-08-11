@@ -27,9 +27,9 @@ from eve_sde.models.map import (
     SolarSystem,
     Stargate,
 )
+from eve_sde.models.misc import AccountingEntryType, NotificationType
 from eve_sde.models.sovereignty import SovereigntyUpgrade
 from eve_sde.models.types import (
-    AccountingEntryType,
     DogmaAttribute,
     DogmaAttributeCategory,
     DogmaEffect,
@@ -62,7 +62,6 @@ SDE_PARTS_TO_UPDATE = [
     DogmaEffect,
     TypeDogma,
     TypeEffect,
-    AccountingEntryType,
     # Map
     Region,
     Constellation,
@@ -78,6 +77,9 @@ SDE_PARTS_TO_UPDATE = [
     # Freelance Jobs
     FreelanceJobSchema,
     FreelanceJobSchemaParameter,  # Requires: FreelanceJobSchema
+    # Misc
+    AccountingEntryType,
+    NotificationType,
 ]
 
 SDE_URL = "https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip"

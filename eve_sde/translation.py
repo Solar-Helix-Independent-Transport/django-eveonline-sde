@@ -12,8 +12,8 @@ from eve_sde.models.map import (
     Region,
     SolarSystem,
 )
+from eve_sde.models.misc import AccountingEntryType, NotificationType
 from eve_sde.models.types import (
-    AccountingEntryType,
     DogmaAttribute,
     DogmaEffect,
     DogmaUnit,
@@ -45,6 +45,7 @@ translator.register(Planet, NameTranslationOptions)
 translator.register(Moon, NameTranslationOptions)
 translator.register(ItemCategory, NameTranslationOptions)
 translator.register(ItemGroup, NameTranslationOptions)
+translator.register(NotificationType, NameTranslationOptions)
 
 
 class DogmaUnitTranslationOptions(TranslationOptions):

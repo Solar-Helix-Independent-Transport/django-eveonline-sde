@@ -124,6 +124,21 @@ class IsEqualTests(TestCase):
 
 
 class LoadExtraTests(TestCase):
+    """
+    No concrete model configures Import.extra_data any more (ItemType's
+    packaged_volume now comes straight off the SDE row's packagedVolume
+    field, since the SDE started including it - see PR #34), but the
+    generic merge-from-external-url mechanism in base.py is still there for
+    any future field that needs it. Exercise it by patching a real,
+    migrated model's Import.extra_data for the duration of the test rather
+    than defining a test-only model class (see module docstring).
+    """
+
+    def setUp(self):
+        self.addCleanup(delattr, ItemType.Import, "extra_data")
+        ItemType.Import.extra_data = (
+            ("https://example.test/extra.json", "id_dict", ("packaged_volume",)),
+        )
 
     def test_success_returns_id_keyed_field_dict(self):
         fake_response = mock.MagicMock()
@@ -157,6 +172,15 @@ class LoadExtraTests(TestCase):
 class LoadFromSdeExtraDataMergeTests(TestCase):
 
     def test_extra_field_is_merged_into_the_row_before_mapping(self):
+        self.addCleanup(delattr, ItemType.Import, "extra_data")
+        # ItemType's data_map now reads packaged_volume straight off the
+        # row's "packagedVolume" key (see LoadExtraTests docstring), so the
+        # merged extra field has to land under that same raw key to prove
+        # the merge-before-mapping behavior end to end.
+        ItemType.Import.extra_data = (
+            ("https://example.test/extra.json", "id_dict", ("packagedVolume",)),
+        )
+
         tmpdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
 

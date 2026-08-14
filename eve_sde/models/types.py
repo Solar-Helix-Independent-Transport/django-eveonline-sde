@@ -193,6 +193,8 @@ class ItemType(TypeBase):
         factionID : int
         packagedVolume: float
         techLevel: int
+        isRepackable: bool
+        isDynamicType: bool
 
     """
     # JsonL Params
@@ -221,6 +223,8 @@ class ItemType(TypeBase):
             ("volume", "volume"),
             ("packaged_volume", "packagedVolume"),
             ("tech_level", "techLevel"),
+            ("is_repackable", ("isRepackable", False)),
+            ("is_dynamic_type", ("isDynamicType", False)),
         )
         update_fields = False
         custom_names = False
@@ -246,6 +250,8 @@ class ItemType(TypeBase):
     volume = models.FloatField(null=True, blank=True, default=None)
     packaged_volume = models.FloatField(null=True, blank=True, default=None)
     tech_level = models.IntegerField(null=True, blank=True, default=None)
+    is_repackable = models.BooleanField(default=False)
+    is_dynamic_type = models.BooleanField(default=False)
 
     @property
     def market_group_id_raw(self) -> int | None:

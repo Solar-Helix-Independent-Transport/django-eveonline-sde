@@ -48,6 +48,22 @@ class TypeBaseStrTests(TestCase):
         self.assertEqual(str(category), "Ship (6)")
 
 
+class ItemTypeRepackableAndDynamicFlagTests(TestCase):
+
+    def test_defaults_to_false_when_absent_from_jsonl(self):
+        item = ItemType.from_jsonl({"_key": 1, "name": {"en": "Widget"}})
+        self.assertFalse(item.is_repackable)
+        self.assertFalse(item.is_dynamic_type)
+
+    def test_true_when_present_in_jsonl(self):
+        item = ItemType.from_jsonl({
+            "_key": 1, "name": {"en": "Widget"},
+            "isRepackable": True, "isDynamicType": True,
+        })
+        self.assertTrue(item.is_repackable)
+        self.assertTrue(item.is_dynamic_type)
+
+
 class ItemMarketGroupTwoPassLoadTests(TestCase):
 
     def test_second_pass_fills_in_the_self_referential_parent(self):

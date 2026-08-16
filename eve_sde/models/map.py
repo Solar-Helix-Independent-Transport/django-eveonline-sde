@@ -348,7 +348,8 @@ class Star(UniverseBase):
     )
     life = models.FloatField(null=True, blank=True, default=None)
     luminosity = models.FloatField(null=True, blank=True, default=None)
-    radius = models.IntegerField(null=True, blank=True, default=None)
+    # star radii (in meters) can exceed a 32-bit signed int, unlike planet/moon radii
+    radius = models.BigIntegerField(null=True, blank=True, default=None)
     solar_system = models.OneToOneField(
         SolarSystem,
         on_delete=models.CASCADE,

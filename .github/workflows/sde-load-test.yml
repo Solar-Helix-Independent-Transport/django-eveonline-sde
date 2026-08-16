@@ -8,6 +8,7 @@ name: SDE Load Test
 
 env:
   REDIS_VERSION: latest
+  DB_IMAGE: mariadb:10.11
 
 on:
   workflow_dispatch:
@@ -22,6 +23,25 @@ jobs:
   test-load:
     name: Test SDE Load (Python ${{ inputs.python-version }})
     runs-on: ubuntu-latest
+
+    # A real MySQL/MariaDB database (rather than the sqlite the rest of the
+    # suite runs against) is what actually enforces column ranges/lengths -
+    # sqlite silently accepts oversized ints/strings that MySQL rejects, and
+    # that's exactly the class of bug (INT overflow, VARCHAR truncation)
+    # this load test exists to catch against real SDE data.
+    services:
+      database:
+        image: ${{ env.DB_IMAGE }}
+        env:
+          MYSQL_ROOT_PASSWORD: temp_password_aa_tox_tests
+          MYSQL_DATABASE: tox_allianceauth
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -ptemp_password_aa_tox_tests"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       # Checkout the repository
@@ -38,6 +58,17 @@ jobs:
       - name: Verify that redis is up
         run: redis-cli ping
 
+      # Verify that the database is up
+      - name: Verify that the database is up
+        run: mysqladmin ping -h 127.0.0.1 -P 3306 -u root -ptemp_password_aa_tox_tests
+
+      # mysqlclient (the Django MySQL backend used below) needs the MySQL
+      # client headers to build against.
+      - name: Install MySQL client build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-libmysqlclient-dev pkg-config
+
       # Set up Python
       - name: Setup Python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
@@ -50,6 +81,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade tox tox-gh-actions
 
-      # Run Tox with the specified environment
+      # Run Tox with the specified environment, against the MySQL service
+      # started above
       - name: Run Tox
+        env:
+          USE_MYSQL: "True"
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: temp_password_aa_tox_tests
+          DB_NAME: tox_allianceauth
         run: tox -v -c tox_import.ini

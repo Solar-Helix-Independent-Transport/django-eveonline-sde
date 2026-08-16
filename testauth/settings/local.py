@@ -45,20 +45,24 @@ NOTIFICATIONS_REFRESH_TIME = 30
 NOTIFICATIONS_MAX_PER_USER = 50
 
 
-# if os.environ.get("USE_MYSQL", True) is True:
-#     DATABASES["default"] = {
-#         "ENGINE": "django.db.backends.mysql",
-#         "NAME": "tox_allianceauth",
-#         "USER": os.environ.get("DB_USER", "user"),
-#         "PASSWORD": os.environ.get("DB_PASSWORD", "password"),
-#         "HOST": os.environ.get("DB_HOST", ""),
-#         "PORT": os.environ.get("DB_PORT", ""),
-#         "OPTIONS": {"charset": "utf8mb4"},
-#         "TEST": {
-#             "CHARSET": "utf8mb4",
-#             "NAME": "test_tox_allianceauth",
-#         },
-#     }
+# Opt-in MySQL/MariaDB backend, used by the SDE load-test workflow to catch
+# column-range/length issues (e.g. INT overflow, VARCHAR truncation) that
+# sqlite doesn't enforce. Off by default so normal unit tests keep using
+# sqlite.
+if os.environ.get("USE_MYSQL", "False") == "True":
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": os.environ.get("DB_NAME", "tox_allianceauth"),
+        "USER": os.environ.get("DB_USER", "user"),
+        "PASSWORD": os.environ.get("DB_PASSWORD", "password"),
+        "HOST": os.environ.get("DB_HOST", ""),
+        "PORT": os.environ.get("DB_PORT", ""),
+        "OPTIONS": {"charset": "utf8mb4"},
+        "TEST": {
+            "CHARSET": "utf8mb4",
+            "NAME": "test_tox_allianceauth",
+        },
+    }
 
 # Add any additional apps to this list.
 INSTALLED_APPS = ["modeltranslation",] + INSTALLED_APPS

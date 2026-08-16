@@ -368,7 +368,9 @@ class TypeList(JSONModel):
     id = models.BigIntegerField(primary_key=True)
     # displayName is only set on a minority of rows, so name can't be non-null.
     name = models.CharField(max_length=250, null=True, blank=True, default=None, db_index=True)
-    internal_name = models.CharField(max_length=250, null=True, blank=True, default=None)
+    # some names embed a bracketed list of included type IDs (e.g. "Dungeon
+    # Ship Restrictions [1156, 1157, ...]") and can run past 250 characters.
+    internal_name = models.TextField(null=True, blank=True, default=None)
     description = models.TextField(null=True, blank=True, default=None)  # _en
 
     class Meta:

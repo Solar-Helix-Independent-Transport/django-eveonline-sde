@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("eve_sde", "0022_sovereigntyupgrade"),
+        ("eve_sde", "0030_itemtype_is_dynamic_type_itemtype_is_repackable"),
     ]
 
     operations = [

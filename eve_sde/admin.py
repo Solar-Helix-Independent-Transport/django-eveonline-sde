@@ -9,7 +9,7 @@ from django.utils.html import format_html
 
 # Django EVE SDE
 from eve_sde import models
-from eve_sde.models.map import PlanetResource
+from eve_sde.models.map import PlanetResource, StarResource
 
 
 class NoEdit(admin.ModelAdmin):
@@ -87,6 +87,51 @@ class SolarSystemAdmin(NoEdit):
         return super().get_queryset(request).select_related('constellation', 'constellation__region')
 
 
+class StarResourceInline(admin.TabularInline):
+    model = StarResource
+    fields = ('power', 'workforce', 'reagent_amount_per_cycle', 'reagent_type')
+    readonly_fields = fields
+    extra = 0
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(models.Star)
+class StarAdmin(NoEdit):
+    list_display = ['name', 'get_region', 'get_constellation', 'get_system']
+    search_fields = [
+        'name',
+        'solar_system__constellation__region__name',
+        'solar_system__constellation__name',
+        'solar_system__name'
+    ]
+    inlines = (StarResourceInline, )
+
+    def get_region(self, obj):
+        return obj.solar_system.constellation.region.name
+
+    def get_constellation(self, obj):
+        return obj.solar_system.constellation.name
+
+    def get_system(self, obj):
+        return obj.solar_system.name
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'solar_system__constellation__region',
+            'solar_system__constellation',
+            'solar_system'
+        )
+
+
+@admin.register(StarResource)
+class StarResourceAdmin(NoEdit):
+    list_display = ('star', 'power', 'workforce', 'reagent_amount_per_cycle', 'reagent_type')
+    search_fields = ('star', 'reagent_type')
+
+
 @admin.register(models.Region)
 class RegionAdmin(NoEdit):
     list_display = ['name']
@@ -141,8 +186,8 @@ class PlanetResourcesInline(admin.TabularInline):
 
     def has_add_permission(self, request, obj=None):
         return False
-      
-      
+
+
 @admin.register(models.Landmark)
 class LandmarkAdmin(NoEdit):
     list_display = ('name', 'solar_system')

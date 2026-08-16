@@ -27,7 +27,9 @@ from eve_sde.models.map import (
     PlanetResource,
     Region,
     SolarSystem,
+    Star,
     Stargate,
+    StarResource,
 )
 from eve_sde.models.misc import (
     AccountingEntryType,
@@ -86,12 +88,14 @@ SDE_PARTS_TO_UPDATE = [
     Region,
     Constellation,
     SolarSystem,
+    Star,  # Requires: SolarSystem, ItemType
     #  System stuffs
     NPCStation,  # Requires: SolarSystem, ItemType
     SovereigntyUpgrade,  # Requires: ItemType
     Stargate,
     Planet,
     PlanetResource,  # Requires: Planet, ItemType
+    StarResource,  # Requires: Star, ItemType
     Moon,
     Landmark,  # Requires: SolarSystem
     # Lore / reference

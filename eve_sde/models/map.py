@@ -178,7 +178,7 @@ class SolarSystem(UniverseBase):
         regional : bool
         securityClass : str
         securityStatus : float
-        starID : int
+        starID : int  # see Star.solar_system (reverse: solar_system.star)
         stargateIDs : list
         corridor : bool
         fringe : bool
@@ -209,7 +209,6 @@ class SolarSystem(UniverseBase):
             ("regional", "regional"),
             ("security_class", "securityClass"),
             ("security_status", "securityStatus"),
-            ("star_id_raw", "starID"),
             ("visual_effect", "visualEffect"),
             ("wormhole_class_id_raw", "wormholeClassID"),
             ("x", "position.x"),
@@ -234,7 +233,6 @@ class SolarSystem(UniverseBase):
     regional = models.BooleanField(null=True, blank=True, default=False)
     security_class = models.CharField(max_length=5, null=True, blank=True, default=None)
     security_status = models.FloatField(null=True, blank=True, default=None)
-    star_id_raw = models.IntegerField(null=True, blank=True, default=None)
     visual_effect = models.CharField(max_length=50, null=True, blank=True, default=None)
     wormhole_class_id_raw = models.IntegerField(null=True, blank=True, default=None)
 
@@ -305,6 +303,80 @@ class SolarSystem(UniverseBase):
         Return True when this solar system is in abyssal deadspace, else False.
         """
         return 32_000_000 <= self.id < 33_000_000
+
+
+class Star(UniverseBase):
+    """
+    Named after the solar system it belongs to.
+
+    mapStars.jsonl
+        _key : int
+        radius : int
+        solarSystemID : int
+        statistics : dict
+            statistics.age : float
+            statistics.life : float
+            statistics.luminosity : float
+            statistics.spectralClass : str
+            statistics.temperature : float
+        typeID : int
+    """
+    class Import:
+        filename = "mapStars.jsonl"
+        lang_fields = False
+        update_fields = False
+        custom_names = True
+        data_map = (
+            ("age", "statistics.age"),
+            ("item_type_id", "typeID"),
+            ("life", "statistics.life"),
+            ("luminosity", "statistics.luminosity"),
+            ("radius", "radius"),
+            ("solar_system_id", "solarSystemID"),
+            ("spectral_class", "statistics.spectralClass"),
+            ("temperature", "statistics.temperature"),
+        )
+
+    age = models.FloatField(null=True, blank=True, default=None)
+    item_type = models.ForeignKey(
+        ItemType,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
+    life = models.FloatField(null=True, blank=True, default=None)
+    luminosity = models.FloatField(null=True, blank=True, default=None)
+    radius = models.IntegerField(null=True, blank=True, default=None)
+    solar_system = models.OneToOneField(
+        SolarSystem,
+        on_delete=models.CASCADE,
+        related_name="star",
+        null=True,
+        blank=True,
+        default=None
+    )
+    spectral_class = models.CharField(max_length=10, null=True, blank=True, default=None)
+    temperature = models.FloatField(null=True, blank=True, default=None)
+
+    def __str__(self):
+        return (self.name)
+
+    @classmethod
+    def name_lookup(cls):
+        _langs = get_langs_for_field("name")
+        return {
+            s.get("id"): s for s in
+            SolarSystem.objects.all().values("id", "name", *_langs)
+        }
+
+    @classmethod
+    def format_name(cls, json_data, name_lookup, lang: str = None):
+        system = name_lookup[json_data.get('solarSystemID')][f"name_{lang}"]
+        if not system:
+            system = name_lookup[json_data.get('solarSystemID')][f"name"]
+        return system
 
 
 class Stargate(UniverseBase):
@@ -579,6 +651,64 @@ class PlanetResource(JSONModel):
 
     planet = models.OneToOneField(
         Planet,
+        primary_key=True,
+        related_name="resource",
+        on_delete=models.CASCADE
+    )
+
+    power = models.IntegerField(null=True, blank=True, default=None)
+    workforce = models.IntegerField(null=True, blank=True, default=None)
+
+    reagent_amount_per_cycle = models.IntegerField(null=True, blank=True, default=None)
+    reagent_cycle_period = models.IntegerField(null=True, blank=True, default=None)
+    reagent_secured_capacity = models.IntegerField(null=True, blank=True, default=None)
+    reagent_type = models.ForeignKey(
+        ItemType,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None,
+        on_delete=models.CASCADE
+    )
+    reagent_unsecured_capacity = models.IntegerField(null=True, blank=True, default=None)
+
+
+class StarResource(JSONModel):
+    """
+    planetResources.jsonl
+        _key : int
+        power : int
+        workforce : int
+        reagent : dict
+            reagent.amount_per_cycle : int
+            reagent.cycle_period : int
+            reagent.secured_capacity : int
+            reagent.type_id : int
+            reagent.unsecured_capacity : int
+    """
+
+    class Import:
+        filename = "planetResources.jsonl"
+        lang_fields = False
+        data_map = (
+            ("star_id", "_key"),
+            ("power", "power"),
+            ("workforce", "workforce"),
+            ("reagent_amount_per_cycle", "reagent.amount_per_cycle"),
+            ("reagent_cycle_period", "reagent.cycle_period"),
+            ("reagent_secured_capacity", "reagent.secured_capacity"),
+            ("reagent_type_id", "reagent.type_id"),
+            ("reagent_unsecured_capacity", "reagent.unsecured_capacity"),
+        )
+        update_fields = False
+        custom_names = False
+        field_filters = (
+            # only include stars, planets are included in the same file
+            ("_key", lambda: Star.objects.values_list("id", flat=True)),
+        )
+
+    star = models.OneToOneField(
+        Star,
         primary_key=True,
         related_name="resource",
         on_delete=models.CASCADE

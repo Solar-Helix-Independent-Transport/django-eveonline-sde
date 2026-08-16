@@ -7,6 +7,12 @@ Tests for the remaining under-covered models in types.py:
 - ItemTypeMaterials/TypeDogma/TypeEffect: each flattens a nested list out of
     one jsonl row into several model rows, and each wipes+reloads on every
     run rather than diffing (same pattern as the industry.py blueprint models).
+- TypeList/TypeListType/TypeListGroup/TypeListCategory: each of the three
+    join models flattens a pair of included/excluded ID lists (e.g.
+    includedTypeIDs + excludedTypeIDs) off the same typeLists.jsonl row into
+    one row per ID, with an `excluded` flag distinguishing which list it
+    came from - same flatten-and-wipe pattern as the other join models, just
+    two source lists merged into one instead of one.
 """
 # Standard Library
 import json
@@ -22,11 +28,16 @@ from eve_sde.models.types import (
     DogmaAttribute,
     DogmaEffect,
     ItemCategory,
+    ItemGroup,
     ItemMarketGroup,
     ItemType,
     ItemTypeMaterials,
     TypeDogma,
     TypeEffect,
+    TypeList,
+    TypeListCategory,
+    TypeListGroup,
+    TypeListType,
 )
 
 
@@ -35,6 +46,22 @@ class TypeBaseStrTests(TestCase):
     def test_str_includes_name_and_id(self):
         category = ItemCategory(id=6, name="Ship")
         self.assertEqual(str(category), "Ship (6)")
+
+
+class ItemTypeRepackableAndDynamicFlagTests(TestCase):
+
+    def test_defaults_to_false_when_absent_from_jsonl(self):
+        item = ItemType.from_jsonl({"_key": 1, "name": {"en": "Widget"}})
+        self.assertFalse(item.is_repackable)
+        self.assertFalse(item.is_dynamic_type)
+
+    def test_true_when_present_in_jsonl(self):
+        item = ItemType.from_jsonl({
+            "_key": 1, "name": {"en": "Widget"},
+            "isRepackable": True, "isDynamicType": True,
+        })
+        self.assertTrue(item.is_repackable)
+        self.assertTrue(item.is_dynamic_type)
 
 
 class ItemMarketGroupTwoPassLoadTests(TestCase):
@@ -163,3 +190,125 @@ class TypeEffectTests(TestCase):
         entry = TypeEffect.objects.get()
         self.assertTrue(entry.is_default)
         self.assertEqual(str(entry), "Widget (1) (60: onlineEffect)")
+
+
+class TypeListLoadTests(TestCase):
+
+    def test_loads_internal_name_and_optional_display_fields(self):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
+        with open(os.path.join(tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+
+        row = {"_key": 4, "name": "ShipyardStructureTargets", "includedTypeIDs": [27674]}
+        with open(os.path.join(tmpdir, "typeLists.jsonl"), "w") as f:
+            f.write(json.dumps(row) + "\n")
+
+        TypeList.load_from_sde(tmpdir)
+
+        type_list = TypeList.objects.get(pk=4)
+        self.assertEqual(type_list.internal_name, "ShipyardStructureTargets")
+        self.assertIsNone(type_list.name)
+        self.assertIsNone(type_list.description)
+        self.assertEqual(str(type_list), "ShipyardStructureTargets (4)")
+
+    def test_display_name_and_description_populate_name_and_description(self):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
+        with open(os.path.join(tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+
+        row = {
+            "_key": 4,
+            "name": "ShipyardStructureTargets",
+            "displayName": {"en": "Shipyard Structure Targets", "de": "Werftstruktur-Ziele"},
+            "displayDescription": {"en": "Valid targets for shipyard structures."},
+        }
+        with open(os.path.join(tmpdir, "typeLists.jsonl"), "w") as f:
+            f.write(json.dumps(row) + "\n")
+
+        TypeList.load_from_sde(tmpdir)
+
+        type_list = TypeList.objects.get(pk=4)
+        self.assertEqual(type_list.name, "Shipyard Structure Targets")
+        self.assertEqual(type_list.name_de, "Werftstruktur-Ziele")
+        self.assertEqual(type_list.description, "Valid targets for shipyard structures.")
+
+
+class TypeListTypeGroupCategoryLoadTests(TestCase):
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
+        with open(os.path.join(self.tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+
+        self.type_list = TypeList.objects.create(id=6, internal_name="BehaviourStructureWeaponModules")
+        ItemType.objects.create(id=100, name="Included Type")
+        ItemType.objects.create(id=200, name="Excluded Type")
+        ItemGroup.objects.create(id=1327, name="Included Group")
+        ItemGroup.objects.create(id=1328, name="Excluded Group")
+        ItemCategory.objects.create(id=7, name="Included Category")
+        ItemCategory.objects.create(id=8, name="Excluded Category")
+
+    def _write_row(self, extra):
+        row = {"_key": 6, **extra}
+        with open(os.path.join(self.tmpdir, "typeLists.jsonl"), "w") as f:
+            f.write(json.dumps(row) + "\n")
+
+    def test_type_list_type_flags_included_vs_excluded(self):
+        self._write_row({"includedTypeIDs": [100], "excludedTypeIDs": [200]})
+
+        TypeListType.load_from_sde(self.tmpdir)
+
+        self.assertEqual(TypeListType.objects.count(), 2)
+        included = TypeListType.objects.get(item_type_id=100)
+        excluded = TypeListType.objects.get(item_type_id=200)
+        self.assertFalse(included.excluded)
+        self.assertTrue(excluded.excluded)
+        self.assertEqual(str(included), "BehaviourStructureWeaponModules (included: Included Type)")
+        self.assertEqual(str(excluded), "BehaviourStructureWeaponModules (excluded: Excluded Type)")
+
+    def test_type_list_group_flags_included_vs_excluded(self):
+        self._write_row({"includedGroupIDs": [1327], "excludedGroupIDs": [1328]})
+
+        TypeListGroup.load_from_sde(self.tmpdir)
+
+        self.assertEqual(TypeListGroup.objects.count(), 2)
+        included = TypeListGroup.objects.get(item_group_id=1327)
+        excluded = TypeListGroup.objects.get(item_group_id=1328)
+        self.assertFalse(included.excluded)
+        self.assertTrue(excluded.excluded)
+        self.assertEqual(str(included), "BehaviourStructureWeaponModules (included: Included Group)")
+        self.assertEqual(str(excluded), "BehaviourStructureWeaponModules (excluded: Excluded Group)")
+
+    def test_type_list_category_flags_included_vs_excluded(self):
+        self._write_row({"includedCategoryIDs": [7], "excludedCategoryIDs": [8]})
+
+        TypeListCategory.load_from_sde(self.tmpdir)
+
+        self.assertEqual(TypeListCategory.objects.count(), 2)
+        included = TypeListCategory.objects.get(item_category_id=7)
+        excluded = TypeListCategory.objects.get(item_category_id=8)
+        self.assertFalse(included.excluded)
+        self.assertTrue(excluded.excluded)
+        self.assertEqual(str(included), "BehaviourStructureWeaponModules (included: Included Category)")
+        self.assertEqual(str(excluded), "BehaviourStructureWeaponModules (excluded: Excluded Category)")
+
+    def test_rerun_wipes_and_reloads_instead_of_duplicating(self):
+        self._write_row({
+            "includedTypeIDs": [100], "excludedTypeIDs": [200],
+            "includedGroupIDs": [1327], "excludedGroupIDs": [1328],
+            "includedCategoryIDs": [7], "excludedCategoryIDs": [8],
+        })
+
+        TypeListType.load_from_sde(self.tmpdir)
+        TypeListType.load_from_sde(self.tmpdir)
+        TypeListGroup.load_from_sde(self.tmpdir)
+        TypeListGroup.load_from_sde(self.tmpdir)
+        TypeListCategory.load_from_sde(self.tmpdir)
+        TypeListCategory.load_from_sde(self.tmpdir)
+
+        self.assertEqual(TypeListType.objects.count(), 2)
+        self.assertEqual(TypeListGroup.objects.count(), 2)
+        self.assertEqual(TypeListCategory.objects.count(), 2)

@@ -141,6 +141,15 @@ class PlanetResourcesInline(admin.TabularInline):
 
     def has_add_permission(self, request, obj=None):
         return False
+      
+      
+@admin.register(models.Landmark)
+class LandmarkAdmin(NoEdit):
+    list_display = ('name', 'solar_system')
+    search_fields = ('name', 'solar_system__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('solar_system')
 
 
 @admin.register(models.Planet)
@@ -273,10 +282,109 @@ class TypeEffectAdmin(NoEdit):
         return super().get_queryset(request).select_related('item_type', 'dogma_effect')
 
 
+@admin.register(models.AccountingEntryType)
+class AccountingEntryTypeAdmin(NoEdit):
+    list_display = ('name', 'internal_name')
+    search_fields = ('name', 'internal_name')
+
+
 @admin.register(models.Archetype)
 class ArchetypeAdmin(NoEdit):
     list_display = ('name', )
     search_fields = ('name', )
+
+
+@admin.register(models.NotificationType)
+class NotificationTypeAdmin(NoEdit):
+    list_display = ('name', 'internal_name')
+    search_fields = ('name', 'internal_name')
+
+
+@admin.register(models.CorporationRoleGroup)
+class CorporationRoleGroupAdmin(NoEdit):
+    list_display = ('name', 'applies_to', 'is_divisional', 'is_locational')
+    search_fields = ('name', )
+
+
+@admin.register(models.CorporationRole)
+class CorporationRoleAdmin(NoEdit):
+    list_display = ('name', 'short_name')
+    search_fields = ('name', 'short_name')
+
+
+@admin.register(models.CorporationRoleGroupMembership)
+class CorporationRoleGroupMembershipAdmin(NoEdit):
+    list_display = ('corporation_role', 'role_group')
+    search_fields = ('corporation_role__name', 'role_group__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('corporation_role', 'role_group')
+
+
+@admin.register(models.MetenoxMoonDrill)
+class MetenoxMoonDrillAdmin(NoEdit):
+    list_display = ('item_type', 'mining_cycle_time', 'mining_efficiency', 'reagents_consumed_per_cycle')
+    search_fields = ('item_type__name', )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('item_type')
+
+
+@admin.register(models.SkillPlan)
+class SkillPlanAdmin(NoEdit):
+    list_display = ('name', 'internal_name')
+    search_fields = ('name', 'internal_name')
+
+
+@admin.register(models.SkillPlanMilestone)
+class SkillPlanMilestoneAdmin(NoEdit):
+    list_display = ('skill_plan', 'item_type', 'level')
+    search_fields = ('skill_plan__name', 'item_type__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('skill_plan', 'item_type')
+
+
+@admin.register(models.SkillPlanSkillRequirement)
+class SkillPlanSkillRequirementAdmin(NoEdit):
+    list_display = ('skill_plan', 'item_type', 'level')
+    search_fields = ('skill_plan__name', 'item_type__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('skill_plan', 'item_type')
+
+
+@admin.register(models.TypeList)
+class TypeListAdmin(NoEdit):
+    list_display = ('name', 'internal_name')
+    search_fields = ('name', 'internal_name')
+
+
+@admin.register(models.TypeListType)
+class TypeListTypeAdmin(NoEdit):
+    list_display = ('type_list', 'item_type', 'excluded')
+    search_fields = ('type_list__name', 'type_list__internal_name', 'item_type__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('type_list', 'item_type')
+
+
+@admin.register(models.TypeListGroup)
+class TypeListGroupAdmin(NoEdit):
+    list_display = ('type_list', 'item_group', 'excluded')
+    search_fields = ('type_list__name', 'type_list__internal_name', 'item_group__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('type_list', 'item_group')
+
+
+@admin.register(models.TypeListCategory)
+class TypeListCategoryAdmin(NoEdit):
+    list_display = ('type_list', 'item_category', 'excluded')
+    search_fields = ('type_list__name', 'type_list__internal_name', 'item_category__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('type_list', 'item_category')
 
 
 @admin.register(models.BlueprintActivity)

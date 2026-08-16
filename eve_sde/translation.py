@@ -6,11 +6,19 @@ from eve_sde.models.freelance import FreelanceJobSchema, FreelanceJobSchemaParam
 from eve_sde.models.lore import Archetype
 from eve_sde.models.map import (
     Constellation,
+    Landmark,
     Moon,
     NPCStation,
     Planet,
     Region,
     SolarSystem,
+)
+from eve_sde.models.misc import (
+    AccountingEntryType,
+    CorporationRole,
+    CorporationRoleGroup,
+    NotificationType,
+    SkillPlan,
 )
 from eve_sde.models.types import (
     DogmaAttribute,
@@ -20,6 +28,7 @@ from eve_sde.models.types import (
     ItemGroup,
     ItemMarketGroup,
     ItemType,
+    TypeList,
 )
 
 
@@ -31,6 +40,10 @@ translator.register(Region, NameAndDescriptionTranslationOptions)
 translator.register(ItemMarketGroup, NameAndDescriptionTranslationOptions)
 translator.register(ItemType, NameAndDescriptionTranslationOptions)
 translator.register(Archetype, NameAndDescriptionTranslationOptions)
+translator.register(CorporationRole, NameAndDescriptionTranslationOptions)
+translator.register(Landmark, NameAndDescriptionTranslationOptions)
+translator.register(SkillPlan, NameAndDescriptionTranslationOptions)
+translator.register(TypeList, NameAndDescriptionTranslationOptions)
 
 
 class NameTranslationOptions(TranslationOptions):
@@ -44,6 +57,8 @@ translator.register(Planet, NameTranslationOptions)
 translator.register(Moon, NameTranslationOptions)
 translator.register(ItemCategory, NameTranslationOptions)
 translator.register(ItemGroup, NameTranslationOptions)
+translator.register(NotificationType, NameTranslationOptions)
+translator.register(CorporationRoleGroup, NameTranslationOptions)
 
 
 class DogmaUnitTranslationOptions(TranslationOptions):
@@ -79,3 +94,10 @@ class FreelanceJobSchemaParameterTranslationOptions(TranslationOptions):
 
 
 translator.register(FreelanceJobSchemaParameter, FreelanceJobSchemaParameterTranslationOptions)
+
+
+class AccountingEntryTypeTranslationOptions(TranslationOptions):
+    fields = ("name", "description", "journal_message")
+
+
+translator.register(AccountingEntryType, AccountingEntryTypeTranslationOptions)

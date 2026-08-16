@@ -9,6 +9,9 @@ Tests for the remaining under-covered pieces of map.py:
 - Planet/Moon's __str__ and localized_name, and Moon's two-part
     name_lookup/format_name (it derives its name from both its parent planet
     AND its own item type, unlike Planet which only needs the solar system).
+- Landmark: locationID is optional in the SDE source (most rows have no
+    solar system at all - "EVE Gate", "Amarr Empire", etc are lore-only),
+    so solar_system has to tolerate being unset.
 """
 # Standard Library
 import json
@@ -23,6 +26,7 @@ from django.test import TestCase
 from eve_sde.models.map import (
     POCHVEN_REGION_ID,
     Constellation,
+    Landmark,
     Moon,
     Planet,
     Region,
@@ -189,3 +193,53 @@ class PlanetMoonDisplayTests(TestCase):
         name = Moon.format_name(data, name_lookup, lang="de")
 
         self.assertEqual(name, "Jita IV - Moon 1")
+
+
+class LandmarkLoadTests(TestCase):
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
+        with open(os.path.join(self.tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+
+    def _write_landmarks(self, rows):
+        with open(os.path.join(self.tmpdir, "landmarks.jsonl"), "w") as f:
+            for row in rows:
+                f.write(json.dumps(row) + "\n")
+
+    def test_loads_position_icon_and_solar_system(self):
+        SolarSystem.objects.create(id=30000116, name="Kenobanala")
+        row = {
+            "_key": 38,
+            "name": {"en": "Kenobanala"},
+            "description": {"en": "A notable system."},
+            "position": {"x": 1.0, "y": 2.0, "z": 3.0},
+            "iconID": 42,
+            "locationID": 30000116,
+        }
+        self._write_landmarks([row])
+
+        Landmark.load_from_sde(self.tmpdir)
+
+        landmark = Landmark.objects.get(pk=38)
+        self.assertEqual(landmark.name, "Kenobanala")
+        self.assertEqual(landmark.description, "A notable system.")
+        self.assertEqual((landmark.x, landmark.y, landmark.z), (1.0, 2.0, 3.0))
+        self.assertEqual(landmark.icon_id, 42)
+        self.assertEqual(landmark.solar_system_id, 30000116)
+
+    def test_icon_and_solar_system_are_optional(self):
+        row = {
+            "_key": 1,
+            "name": {"en": "EVE Gate"},
+            "description": {"en": "The impenetrable EVE Gate."},
+            "position": {"x": 1.0, "y": 2.0, "z": 3.0},
+        }
+        self._write_landmarks([row])
+
+        Landmark.load_from_sde(self.tmpdir)
+
+        landmark = Landmark.objects.get(pk=1)
+        self.assertIsNone(landmark.icon_id)
+        self.assertIsNone(landmark.solar_system)

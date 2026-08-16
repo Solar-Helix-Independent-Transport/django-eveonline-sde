@@ -191,6 +191,10 @@ class ItemType(TypeBase):
         metaGroupID : int
         variationParentTypeID : int
         factionID : int
+        packagedVolume: float
+        techLevel: int
+        isRepackable: bool
+        isDynamicType: bool
 
     """
     # JsonL Params
@@ -217,14 +221,13 @@ class ItemType(TypeBase):
             ("sound_id", "soundID"),
             ("variation_parent_type_id", "variationParentTypeID"),
             ("volume", "volume"),
-            ("packaged_volume", "packaged_volume"),  # from extras
+            ("packaged_volume", "packagedVolume"),
             ("tech_level", "techLevel"),
+            ("is_repackable", ("isRepackable", False)),
+            ("is_dynamic_type", ("isDynamicType", False)),
         )
         update_fields = False
         custom_names = False
-        extra_data = (
-            ("https://sde.hoboleaks.space/tq/repackagedvolumes.json", "id_dict", ("packaged_volume",)),
-        )
 
     # Model Fields
     base_price = models.FloatField(null=True, blank=True, default=None)
@@ -247,6 +250,8 @@ class ItemType(TypeBase):
     volume = models.FloatField(null=True, blank=True, default=None)
     packaged_volume = models.FloatField(null=True, blank=True, default=None)
     tech_level = models.IntegerField(null=True, blank=True, default=None)
+    is_repackable = models.BooleanField(default=False)
+    is_dynamic_type = models.BooleanField(default=False)
 
     @property
     def market_group_id_raw(self) -> int | None:
@@ -329,6 +334,261 @@ class ItemTypeMaterials(JSONModel):
         if self.quantity_max and self.quantity_min:
             qty = f" x ({self.quantity_min} - {self.quantity_max})"
         return f"{self.item_type.name} ({self.material_item_type.name}{qty})"
+
+
+class TypeList(JSONModel):
+    """
+    typeLists.jsonl
+        _key : int
+        name : str
+        displayName : dict
+            ...
+        displayDescription : dict
+            ...
+        * includedTypeIDs : list
+        * includedGroupIDs : list
+        * includedCategoryIDs : list
+        * excludedTypeIDs : list
+        * excludedGroupIDs : list
+        * excludedCategoryIDs : list
+    """
+    # JsonL Params
+    class Import:
+        filename = "typeLists.jsonl"
+        lang_fields = [("name", "displayName"), ("description", "displayDescription")]
+        data_map = (
+            ("internal_name", "name"),
+            ("name", "displayName.en"),
+            ("description", "displayDescription.en"),
+        )
+        update_fields = False
+        custom_names = False
+
+    # Model Fields
+    id = models.BigIntegerField(primary_key=True)
+    # displayName is only set on a minority of rows, so name can't be non-null.
+    name = models.CharField(max_length=250, null=True, blank=True, default=None, db_index=True)
+    internal_name = models.CharField(max_length=250, null=True, blank=True, default=None)
+    description = models.TextField(null=True, blank=True, default=None)  # _en
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return f"{self.name or self.internal_name} ({self.id})"
+
+
+class TypeListType(JSONModel):
+    """
+    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    typeLists.jsonl
+        _key : int
+        * includedTypeIDs : list
+        * excludedTypeIDs : list
+    """
+    # JsonL Params
+    class Import:
+        filename = "typeLists.jsonl"
+        lang_fields = False
+        data_map = (
+            ("type_list_id", "_key"),
+            ("item_type_id", "typeID"),
+            ("excluded", "excluded"),
+        )
+        update_fields = False
+        custom_names = False
+
+    type_list = models.ForeignKey(
+        TypeList,
+        on_delete=models.CASCADE,
+        related_name="types",
+        null=True,
+        blank=True,
+        default=None
+    )
+    item_type = models.ForeignKey(
+        ItemType,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
+    excluded = models.BooleanField(default=False)
+
+    @classmethod
+    def from_jsonl(cls, json_data, name_lookup=False):
+        _out = []
+        _key = {"_key": json_data.get("_key")}
+
+        for type_id in json_data.get("includedTypeIDs", []):
+            _out.append(cls.map_to_model({"typeID": type_id, "excluded": False}
+                        | _key, name_lookup=name_lookup, pk=False))
+        for type_id in json_data.get("excludedTypeIDs", []):
+            _out.append(cls.map_to_model({"typeID": type_id, "excluded": True}
+                        | _key, name_lookup=name_lookup, pk=False))
+
+        return _out
+
+    @classmethod
+    def load_from_sde(cls, folder_name):
+        gate_qry = cls.objects.all()
+        if gate_qry.exists():
+            # speed and we are not caring about f-keys or signals on these models
+            gate_qry._raw_delete(gate_qry.db)
+        super().load_from_sde(folder_name)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        marker = "excluded" if self.excluded else "included"
+        return f"{self.type_list.name or self.type_list.internal_name} ({marker}: {self.item_type.name})"
+
+
+class TypeListGroup(JSONModel):
+    """
+    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    typeLists.jsonl
+        _key : int
+        * includedGroupIDs : list
+        * excludedGroupIDs : list
+    """
+    # JsonL Params
+    class Import:
+        filename = "typeLists.jsonl"
+        lang_fields = False
+        data_map = (
+            ("type_list_id", "_key"),
+            ("item_group_id", "groupID"),
+            ("excluded", "excluded"),
+        )
+        update_fields = False
+        custom_names = False
+
+    type_list = models.ForeignKey(
+        TypeList,
+        on_delete=models.CASCADE,
+        related_name="groups",
+        null=True,
+        blank=True,
+        default=None
+    )
+    item_group = models.ForeignKey(
+        ItemGroup,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
+    excluded = models.BooleanField(default=False)
+
+    @classmethod
+    def from_jsonl(cls, json_data, name_lookup=False):
+        _out = []
+        _key = {"_key": json_data.get("_key")}
+
+        for group_id in json_data.get("includedGroupIDs", []):
+            _out.append(cls.map_to_model({"groupID": group_id, "excluded": False}
+                        | _key, name_lookup=name_lookup, pk=False))
+        for group_id in json_data.get("excludedGroupIDs", []):
+            _out.append(cls.map_to_model({"groupID": group_id, "excluded": True}
+                        | _key, name_lookup=name_lookup, pk=False))
+
+        return _out
+
+    @classmethod
+    def load_from_sde(cls, folder_name):
+        gate_qry = cls.objects.all()
+        if gate_qry.exists():
+            # speed and we are not caring about f-keys or signals on these models
+            gate_qry._raw_delete(gate_qry.db)
+        super().load_from_sde(folder_name)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        marker = "excluded" if self.excluded else "included"
+        return f"{self.type_list.name or self.type_list.internal_name} ({marker}: {self.item_group.name})"
+
+
+class TypeListCategory(JSONModel):
+    """
+    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    typeLists.jsonl
+        _key : int
+        * includedCategoryIDs : list
+        * excludedCategoryIDs : list
+    """
+    # JsonL Params
+    class Import:
+        filename = "typeLists.jsonl"
+        lang_fields = False
+        data_map = (
+            ("type_list_id", "_key"),
+            ("item_category_id", "categoryID"),
+            ("excluded", "excluded"),
+        )
+        update_fields = False
+        custom_names = False
+
+    type_list = models.ForeignKey(
+        TypeList,
+        on_delete=models.CASCADE,
+        related_name="categories",
+        null=True,
+        blank=True,
+        default=None
+    )
+    item_category = models.ForeignKey(
+        ItemCategory,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None
+    )
+    excluded = models.BooleanField(default=False)
+
+    @classmethod
+    def from_jsonl(cls, json_data, name_lookup=False):
+        _out = []
+        _key = {"_key": json_data.get("_key")}
+
+        for category_id in json_data.get("includedCategoryIDs", []):
+            _out.append(
+                cls.map_to_model(
+                    {"categoryID": category_id, "excluded": False} | _key,
+                    name_lookup=name_lookup, pk=False
+                )
+            )
+        for category_id in json_data.get("excludedCategoryIDs", []):
+            _out.append(
+                cls.map_to_model(
+                    {"categoryID": category_id, "excluded": True} | _key,
+                    name_lookup=name_lookup,
+                    pk=False
+                )
+            )
+
+        return _out
+
+    @classmethod
+    def load_from_sde(cls, folder_name):
+        gate_qry = cls.objects.all()
+        if gate_qry.exists():
+            # speed and we are not caring about f-keys or signals on these models
+            gate_qry._raw_delete(gate_qry.db)
+        super().load_from_sde(folder_name)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        marker = "excluded" if self.excluded else "included"
+        return f"{self.type_list.name or self.type_list.internal_name} ({marker}: {self.item_category.name})"
 
 
 class DogmaAttributeCategory(TypeBase):

@@ -17,6 +17,9 @@ from eve_sde.models import (
     BlueprintActivityMaterial,
     BlueprintActivityProduct,
     Constellation,
+    CorporationRole,
+    CorporationRoleGroup,
+    CorporationRoleGroupMembership,
     DogmaAttribute,
     DogmaAttributeCategory,
     DogmaEffect,
@@ -24,17 +27,28 @@ from eve_sde.models import (
     EveSDESection,
     FreelanceJobSchema,
     FreelanceJobSchemaParameter,
+    ItemCategory,
+    ItemGroup,
     ItemType,
     ItemTypeMaterials,
+    Landmark,
+    MetenoxMoonDrill,
     Moon,
     NPCStation,
     Planet,
     Region,
+    SkillPlan,
+    SkillPlanMilestone,
+    SkillPlanSkillRequirement,
     SolarSystem,
     SovereigntyUpgrade,
     Stargate,
     TypeDogma,
     TypeEffect,
+    TypeList,
+    TypeListCategory,
+    TypeListGroup,
+    TypeListType,
 )
 from eve_sde.models.base import JSONModel
 
@@ -257,6 +271,67 @@ class NewAdminQuerysetTests(TestCase):
         admin_instance = esde_admin.FreelanceJobSchemaParameterAdmin(FreelanceJobSchemaParameter, admin.site)
         qs = admin_instance.get_queryset(RequestFactory().get("/"))
         self.assertEqual(qs.get(pk=parameter.pk).schema.title, "Boost Shield")
+
+    def test_landmark_admin_queryset(self):
+        system = SolarSystem.objects.create(id=1, name="Jita")
+        landmark = Landmark.objects.create(id=1, name="Jita Landmark", solar_system=system)
+
+        admin_instance = esde_admin.LandmarkAdmin(Landmark, admin.site)
+        qs = admin_instance.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(qs.get(pk=landmark.pk).solar_system.name, "Jita")
+
+    def test_corporation_role_group_membership_admin_queryset(self):
+        role = CorporationRole.objects.create(id=1, name="Director")
+        group = CorporationRoleGroup.objects.create(id=1, name="General")
+        membership = CorporationRoleGroupMembership.objects.create(corporation_role=role, role_group=group)
+
+        admin_instance = esde_admin.CorporationRoleGroupMembershipAdmin(CorporationRoleGroupMembership, admin.site)
+        qs = admin_instance.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(qs.get(pk=membership.pk).role_group.name, "General")
+
+    def test_metenox_moon_drill_admin_queryset(self):
+        item_type = ItemType.objects.create(id=81826, name="Metenox Moon Drill")
+        drill = MetenoxMoonDrill.objects.create(item_type=item_type)
+
+        admin_instance = esde_admin.MetenoxMoonDrillAdmin(MetenoxMoonDrill, admin.site)
+        qs = admin_instance.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(qs.get(pk=drill.pk).item_type.name, "Metenox Moon Drill")
+
+    def test_skill_plan_milestone_and_requirement_admin_querysets(self):
+        plan = SkillPlan.objects.create(id=1, name="Militia Fighter")
+        item_type = ItemType.objects.create(id=100, name="Gunnery")
+        milestone = SkillPlanMilestone.objects.create(skill_plan=plan, item_type=item_type, level=3)
+        requirement = SkillPlanSkillRequirement.objects.create(skill_plan=plan, item_type=item_type, level=1)
+
+        milestone_admin = esde_admin.SkillPlanMilestoneAdmin(SkillPlanMilestone, admin.site)
+        milestone_qs = milestone_admin.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(milestone_qs.get(pk=milestone.pk).skill_plan.name, "Militia Fighter")
+
+        requirement_admin = esde_admin.SkillPlanSkillRequirementAdmin(SkillPlanSkillRequirement, admin.site)
+        requirement_qs = requirement_admin.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(requirement_qs.get(pk=requirement.pk).item_type.name, "Gunnery")
+
+    def test_type_list_type_group_category_admin_querysets(self):
+        type_list = TypeList.objects.create(id=1, internal_name="ShipyardStructureTargets")
+        item_type = ItemType.objects.create(id=100, name="Widget")
+        item_group = ItemGroup.objects.create(id=200, name="Widgets")
+        item_category = ItemCategory.objects.create(id=300, name="Structures")
+
+        type_row = TypeListType.objects.create(type_list=type_list, item_type=item_type)
+        group_row = TypeListGroup.objects.create(type_list=type_list, item_group=item_group)
+        category_row = TypeListCategory.objects.create(type_list=type_list, item_category=item_category)
+
+        type_admin = esde_admin.TypeListTypeAdmin(TypeListType, admin.site)
+        type_qs = type_admin.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(type_qs.get(pk=type_row.pk).item_type.name, "Widget")
+
+        group_admin = esde_admin.TypeListGroupAdmin(TypeListGroup, admin.site)
+        group_qs = group_admin.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(group_qs.get(pk=group_row.pk).item_group.name, "Widgets")
+
+        category_admin = esde_admin.TypeListCategoryAdmin(TypeListCategory, admin.site)
+        category_qs = category_admin.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(category_qs.get(pk=category_row.pk).item_category.name, "Structures")
 
 
 class EveSDEAdminTests(TestCase):

@@ -27,6 +27,7 @@ class JSONModel(models.Model):
         custom_names = False
         update_fields = False
         extra_data = False
+        field_filters = ()
 
     @classmethod
     def map_to_model(cls, json_data, name_lookup=False, pk=True):
@@ -91,6 +92,16 @@ class JSONModel(models.Model):
                     logger.error(f"Error loading extra data from {url} for {cls.__name__}: {e}")
             return output
         return False
+
+    @classmethod
+    def load_filters(cls) -> dict[str, set]:
+        if hasattr(cls.Import, "field_filters") and cls.Import.field_filters:
+            output = {}
+            for field_name, function in cls.Import.field_filters:
+                output[field_name] = set(function())
+
+            return output
+        return {}
 
     @classmethod
     def format_name(cls, data, name_lookup, lang: str = False):
@@ -166,6 +177,7 @@ class JSONModel(models.Model):
 
         name_lookup = cls.name_lookup()
         extra_fields = cls.load_extra()
+        filter_fields = cls.load_filters()
 
         pks = set(
             cls.objects.all().values_list("pk", flat=True)
@@ -189,6 +201,14 @@ class JSONModel(models.Model):
                         if rg.get("_key") in extra_fields:
                             for f, v in extra_fields[rg.get("_key")].items():
                                 rg[f] = v
+                    if filter_fields:
+                        filtered = False
+                        for field_name, allowed_values in filter_fields.items():
+                            if rg.get(field_name) not in allowed_values:
+                                filtered = True
+                                break
+                        if filtered:
+                            continue
                     _new = cls.from_jsonl(rg, name_lookup)
                 except Exception:
                     logger.exception(f"{file_path} - Skipping malformed row {row}")

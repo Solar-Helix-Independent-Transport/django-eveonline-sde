@@ -543,6 +543,64 @@ class Planet(UniverseBase):
         return f"{system} {to_roman_numeral(json_data.get('celestialIndex'))}"
 
 
+class PlanetResource(JSONModel):
+    """
+    planetResources.jsonl
+        _key : int
+        power : int
+        workforce : int
+        reagent : dict
+            reagent.amount_per_cycle : int
+            reagent.cycle_period : int
+            reagent.secured_capacity : int
+            reagent.type_id : int
+            reagent.unsecured_capacity : int
+    """
+
+    class Import:
+        filename = "planetResources.jsonl"
+        lang_fields = False
+        data_map = (
+            ("planet_id", "_key"),
+            ("power", "power"),
+            ("workforce", "workforce"),
+            ("reagent_amount_per_cycle", "reagent.amount_per_cycle"),
+            ("reagent_cycle_period", "reagent.cycle_period"),
+            ("reagent_secured_capacity", "reagent.secured_capacity"),
+            ("reagent_type_id", "reagent.type_id"),
+            ("reagent_unsecured_capacity", "reagent.unsecured_capacity"),
+        )
+        update_fields = False
+        custom_names = False
+        field_filters = (
+            # only include planets, stars are included in the same file
+            ("_key", lambda: Planet.objects.values_list("id", flat=True)),
+        )
+
+    planet = models.OneToOneField(
+        Planet,
+        primary_key=True,
+        related_name="resource",
+        on_delete=models.CASCADE
+    )
+
+    power = models.IntegerField(null=True, blank=True, default=None)
+    workforce = models.IntegerField(null=True, blank=True, default=None)
+
+    reagent_amount_per_cycle = models.IntegerField(null=True, blank=True, default=None)
+    reagent_cycle_period = models.IntegerField(null=True, blank=True, default=None)
+    reagent_secured_capacity = models.IntegerField(null=True, blank=True, default=None)
+    reagent_type = models.ForeignKey(
+        ItemType,
+        related_name="+",
+        null=True,
+        blank=True,
+        default=None,
+        on_delete=models.CASCADE
+    )
+    reagent_unsecured_capacity = models.IntegerField(null=True, blank=True, default=None)
+
+
 class Moon(UniverseBase):
     """
     "system_name planet_roman_numeral - Moon #"

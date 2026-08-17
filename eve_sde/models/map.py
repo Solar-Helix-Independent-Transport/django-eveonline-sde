@@ -325,7 +325,6 @@ class Star(UniverseBase):
         filename = "mapStars.jsonl"
         lang_fields = False
         update_fields = False
-        custom_names = True
         data_map = (
             ("age", "statistics.age"),
             ("item_type_id", "typeID"),
@@ -361,23 +360,13 @@ class Star(UniverseBase):
     spectral_class = models.CharField(max_length=10, null=True, blank=True, default=None)
     temperature = models.FloatField(null=True, blank=True, default=None)
 
+    # override name field to use solar system name instead of star type name
+    @property
+    def name(self):
+        return self.solar_system.name if self.solar_system else f"Star {self.id}"
+
     def __str__(self):
-        return (self.name)
-
-    @classmethod
-    def name_lookup(cls):
-        _langs = get_langs_for_field("name")
-        return {
-            s.get("id"): s for s in
-            SolarSystem.objects.all().values("id", "name", *_langs)
-        }
-
-    @classmethod
-    def format_name(cls, json_data, name_lookup, lang: str = None):
-        system = name_lookup[json_data.get('solarSystemID')][f"name_{lang}"]
-        if not system:
-            system = name_lookup[json_data.get('solarSystemID')][f"name"]
-        return system
+        return self.name
 
 
 class Stargate(UniverseBase):

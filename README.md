@@ -76,6 +76,27 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
   ]
   ```
 
+- If you're **not** running [AllianceAuth](https://gitlab.com/allianceauth/allianceauth), set `LANGUAGES` yourself. `modeltranslation` adds one DB column per entry in `LANGUAGES` (e.g. `name_de`, `name_fr_fr`), and this package's migrations were generated against the exact set below, so it must match - AllianceAuth already ships this same `LANGUAGES` setting, which is why this step is only needed standalone.
+
+  ```python
+  LANGUAGES = (
+      ("en", "English"),
+      ("de", "German"),
+      ("es", "Spanish"),
+      ("it-it", "Italian"),
+      ("ja", "Japanese"),
+      ("ko-kr", "Korean"),
+      ("fr-fr", "French"),
+      ("nl-nl", "Dutch"),
+      ("pl-pl", "Polish"),
+      ("ru", "Russian"),
+      ("uk", "Ukrainian"),
+      ("zh-hans", "Simplified Chinese"),
+  )
+
+  USE_I18N = True
+  ```
+
 - Add `"eve_sde",` to your `INSTALLED_APPS`
 
 - migrate etc

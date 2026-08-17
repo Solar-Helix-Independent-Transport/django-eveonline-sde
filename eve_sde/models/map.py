@@ -325,6 +325,7 @@ class Star(UniverseBase):
         filename = "mapStars.jsonl"
         lang_fields = False
         update_fields = False
+        custom_names = False
         data_map = (
             ("age", "statistics.age"),
             ("item_type_id", "typeID"),

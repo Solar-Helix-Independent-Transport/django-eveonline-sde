@@ -28,6 +28,7 @@ class JSONModel(models.Model):
         update_fields = False
         extra_data = False
         field_filters = ()
+        natural_key = False
 
     @classmethod
     def map_to_model(cls, json_data, name_lookup=False, pk=True):
@@ -183,6 +184,14 @@ class JSONModel(models.Model):
             cls.objects.all().values_list("pk", flat=True)
         )  # if cls.Import.update_fields else False
 
+        natural_key = cls.natural_key_fields()
+        if natural_key:
+            # match incoming rows to existing ones by their data, not their pk
+            existing_keys = {
+                tuple(_r[:-1]): _r[-1] for _r in cls.objects.values_list(*natural_key, "pk")
+            }
+            seen_keys = set()
+
         file_path = f"{folder_name}/{cls.Import.filename}"
 
         total_lines = 0
@@ -214,7 +223,24 @@ class JSONModel(models.Model):
                     logger.exception(f"{file_path} - Skipping malformed row {row}")
                     continue
 
-                if isinstance(_new, list):
+                if natural_key:
+                    for _i in (_new if isinstance(_new, list) else [_new]):
+                        _nk = tuple(getattr(_i, f) for f in natural_key)
+                        if None in _nk:
+                            # can't be matched, so it's recreated each import
+                            logger.info(f"{file_path} - Row {row} missing natural key {natural_key}: {_nk}")
+                            _creates.append(_i)
+                        elif _nk in seen_keys:
+                            logger.warning(f"{file_path} - Row {row} duplicate natural key {natural_key}: {_nk}")
+                            continue
+                        elif _nk in existing_keys:
+                            _i.pk = existing_keys[_nk]
+                            _updates.append(_i)
+                        else:
+                            _creates.append(_i)
+                        seen_keys.add(_nk)
+                        total_read += 1
+                elif isinstance(_new, list):
                     if pks:
                         for _i in _new:
                             if _i.pk in pks:
@@ -253,6 +279,9 @@ class JSONModel(models.Model):
             )
             cls.create_update(_creates, _updates)
 
+        if natural_key:
+            cls.delete_stale(existing_keys, seen_keys)
+
         _complete = cls.objects.all().count()
         if _complete != total_lines and _complete != total_read:
             logger.warning(
@@ -264,6 +293,19 @@ class JSONModel(models.Model):
             cls.__name__,
             total_lines if _complete == total_lines else total_read, _complete
         )
+
+    @classmethod
+    def natural_key_fields(cls):
+        return getattr(cls.Import, "natural_key", False)
+
+    @classmethod
+    def delete_stale(cls, existing_keys: dict, seen_keys: set):
+        """Delete rows that were in the DB but are no longer in the SDE."""
+        stale = [_pk for _nk, _pk in existing_keys.items() if _nk not in seen_keys or None in _nk]
+        if stale:
+            logger.info(f"{cls.__name__} - Removing {len(stale)} rows no longer in the SDE")
+        for i in range(0, len(stale), ESDE_BATCH_SIZE):
+            cls.objects.filter(pk__in=stale[i:i + ESDE_BATCH_SIZE]).delete()
 
     @classmethod
     def update_sde_section_state(cls, folder_name: str, section: str, total_lines: int, total_rows: int):

@@ -11,6 +11,12 @@ import httpx
 
 # Django EVE SDE
 from eve_sde.models import EveSDE
+from eve_sde.models.certificates import (
+    Certificate,
+    CertificateRecommendedType,
+    CertificateSkill,
+    Mastery,
+)
 from eve_sde.models.freelance import FreelanceJobSchema, FreelanceJobSchemaParameter
 from eve_sde.models.industry import (
     BlueprintActivity,
@@ -113,6 +119,11 @@ SDE_PARTS_TO_UPDATE = [
     SkillPlan,
     SkillPlanMilestone,  # Requires: SkillPlan, ItemType
     SkillPlanSkillRequirement,  # Requires: SkillPlan, ItemType
+    # Certificates
+    Certificate,  # Requires: ItemGroup
+    CertificateSkill,  # Requires: Certificate, ItemType
+    CertificateRecommendedType,  # Requires: Certificate, ItemType
+    Mastery,  # Requires: Certificate, ItemType
 ]
 
 SDE_URL = "https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip"

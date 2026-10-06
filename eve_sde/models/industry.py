@@ -81,7 +81,7 @@ class BlueprintActivity(JSONModel):
 
 class BlueprintActivityProduct(JSONModel):
     """
-    # Is Deleted and reloaded on updates. Don't F-Key to this model.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
     blueprints.jsonl
         _key : int
         activities : dict
@@ -103,6 +103,7 @@ class BlueprintActivityProduct(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("blueprint_activity_id", "item_type_id")
 
     blueprint_activity = models.ForeignKey(
         BlueprintActivity,
@@ -139,10 +140,6 @@ class BlueprintActivityProduct(JSONModel):
 
     @classmethod
     def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            gate_qry._raw_delete(gate_qry.db)
-
         # there is a bad typeID in the product list.
         # we will just ignore them
 
@@ -150,6 +147,15 @@ class BlueprintActivityProduct(JSONModel):
             ItemType.objects.all().values_list("pk", flat=True)
         )
         super().load_from_sde(folder_name)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=["blueprint_activity", "item_type"],
+                name="esde_blueprintactivityproduct_nk",
+            ),
+        ]
 
     def __str__(self):
         return (
@@ -160,7 +166,7 @@ class BlueprintActivityProduct(JSONModel):
 
 class BlueprintActivityMaterial(JSONModel):
     """
-    # Is Deleted and reloaded on updates. Don't F-Key to this model.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
 
     blueprints.jsonl
         _key : int
@@ -181,6 +187,7 @@ class BlueprintActivityMaterial(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("blueprint_activity_id", "item_type_id")
 
     blueprint_activity = models.ForeignKey(
         BlueprintActivity,
@@ -216,10 +223,6 @@ class BlueprintActivityMaterial(JSONModel):
 
     @classmethod
     def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            gate_qry._raw_delete(gate_qry.db)
-
         # there is a bad typeID in the materials list.
         # we will just ignore them
         # 3927 - Clones  (met: 3924)
@@ -227,6 +230,15 @@ class BlueprintActivityMaterial(JSONModel):
             ItemType.objects.all().values_list("pk", flat=True)
         )
         super().load_from_sde(folder_name)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=["blueprint_activity", "item_type"],
+                name="esde_blueprintactivitymaterial_nk",
+            ),
+        ]
 
     def __str__(self):
         return (

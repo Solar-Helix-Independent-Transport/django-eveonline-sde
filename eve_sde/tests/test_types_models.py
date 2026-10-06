@@ -5,14 +5,16 @@ Tests for the remaining under-covered models in types.py:
     ordering issues, then a second pass fills it in).
 - ItemType.market_group_id_raw.
 - ItemTypeMaterials/TypeDogma/TypeEffect: each flattens a nested list out of
-    one jsonl row into several model rows, and each wipes+reloads on every
-    run rather than diffing (same pattern as the industry.py blueprint models).
+    one jsonl row into several model rows, and each syncs in place by its
+    Import.natural_key on rerun (same pattern as the industry.py blueprint
+    models).
 - TypeList/TypeListType/TypeListGroup/TypeListCategory: each of the three
     join models flattens a pair of included/excluded ID lists (e.g.
     includedTypeIDs + excludedTypeIDs) off the same typeLists.jsonl row into
     one row per ID, with an `excluded` flag distinguishing which list it
-    came from - same flatten-and-wipe pattern as the other join models, just
-    two source lists merged into one instead of one.
+    came from - same flatten-and-sync pattern as the other join models, just
+    two source lists merged into one instead of one. The SDE lists a few IDs
+    twice in the same included list, so the repeat is skipped.
 """
 # Standard Library
 import json
@@ -127,7 +129,7 @@ class ItemTypeMaterialsTests(TestCase):
         self.assertEqual(randomized.quantity_min, 1)
         self.assertEqual(randomized.quantity_max, 5)
 
-    def test_rerun_wipes_and_reloads_instead_of_duplicating(self):
+    def test_rerun_syncs_instead_of_duplicating(self):
         ItemTypeMaterials.load_from_sde(self.tmpdir)
         ItemTypeMaterials.load_from_sde(self.tmpdir)
 
@@ -146,7 +148,7 @@ class ItemTypeMaterialsTests(TestCase):
 
 class TypeDogmaTests(TestCase):
 
-    def test_flattens_dogma_attributes_and_wipes_on_rerun(self):
+    def test_flattens_dogma_attributes_and_syncs_on_rerun(self):
         tmpdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         with open(os.path.join(tmpdir, "_sde.jsonl"), "w") as f:
@@ -167,10 +169,35 @@ class TypeDogmaTests(TestCase):
         self.assertEqual(entry.value, 100.0)
         self.assertEqual(str(entry), "Widget (1) (50: mass)")
 
+    def test_rerun_updates_changed_values_and_deletes_removed_attributes(self):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
+        with open(os.path.join(tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+
+        ItemType.objects.create(id=1, name="Widget")
+        DogmaAttribute.objects.create(id=50, name="mass")
+        DogmaAttribute.objects.create(id=51, name="volume")
+
+        def write(attributes):
+            with open(os.path.join(tmpdir, "typeDogma.jsonl"), "w") as f:
+                f.write(json.dumps({"_key": 1, "dogmaAttributes": attributes}) + "\n")
+
+        write([{"attributeID": 50, "value": 100.0}, {"attributeID": 51, "value": 5.0}])
+        TypeDogma.load_from_sde(tmpdir)
+        mass_pk = TypeDogma.objects.get(dogma_attribute_id=50).pk
+
+        write([{"attributeID": 50, "value": 150.0}])
+        TypeDogma.load_from_sde(tmpdir)
+
+        mass = TypeDogma.objects.get()
+        self.assertEqual(mass.pk, mass_pk)
+        self.assertEqual(mass.value, 150.0)
+
 
 class TypeEffectTests(TestCase):
 
-    def test_flattens_dogma_effects_and_wipes_on_rerun(self):
+    def test_flattens_dogma_effects_and_syncs_on_rerun(self):
         tmpdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         with open(os.path.join(tmpdir, "_sde.jsonl"), "w") as f:
@@ -295,7 +322,7 @@ class TypeListTypeGroupCategoryLoadTests(TestCase):
         self.assertEqual(str(included), "BehaviourStructureWeaponModules (included: Included Category)")
         self.assertEqual(str(excluded), "BehaviourStructureWeaponModules (excluded: Excluded Category)")
 
-    def test_rerun_wipes_and_reloads_instead_of_duplicating(self):
+    def test_rerun_syncs_instead_of_duplicating(self):
         self._write_row({
             "includedTypeIDs": [100], "excludedTypeIDs": [200],
             "includedGroupIDs": [1327], "excludedGroupIDs": [1328],
@@ -312,3 +339,20 @@ class TypeListTypeGroupCategoryLoadTests(TestCase):
         self.assertEqual(TypeListType.objects.count(), 2)
         self.assertEqual(TypeListGroup.objects.count(), 2)
         self.assertEqual(TypeListCategory.objects.count(), 2)
+
+    def test_type_listed_twice_in_the_same_list_is_loaded_once(self):
+        self._write_row({"includedTypeIDs": [100, 100], "excludedTypeIDs": [200]})
+
+        with self.assertLogs("eve_sde.models.base", level="WARNING"):
+            TypeListType.load_from_sde(self.tmpdir)
+
+        self.assertEqual(TypeListType.objects.count(), 2)
+
+    def test_type_moving_from_included_to_excluded_replaces_the_row(self):
+        self._write_row({"includedTypeIDs": [100]})
+        TypeListType.load_from_sde(self.tmpdir)
+
+        self._write_row({"excludedTypeIDs": [100]})
+        TypeListType.load_from_sde(self.tmpdir)
+
+        self.assertEqual(list(TypeListType.objects.values_list("item_type_id", "excluded")), [(100, True)])

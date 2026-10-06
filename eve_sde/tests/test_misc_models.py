@@ -6,7 +6,7 @@ Tests for the standalone lookup models in misc.py:
     source, so name has to tolerate that (unlike TypeBase's non-null name).
 - CorporationRole/CorporationRoleGroup/CorporationRoleGroupMembership: the
     membership model flattens corporationRoles.jsonl's roleGroupIDs list
-    into one row per (role, role group) pair - same flatten-and-wipe pattern
+    into one row per (role, role group) pair - same flatten-and-sync pattern
     as ItemTypeMaterials/TypeDogma/TypeEffect in types.py. roleGroupIDs is
     itself missing on one role in the SDE source, so that role should load
     with zero membership rows rather than failing.
@@ -14,8 +14,9 @@ Tests for the standalone lookup models in misc.py:
     same shape as SovereigntyUpgrade in sovereignty.py.
 - SkillPlan/SkillPlanMilestone/SkillPlanSkillRequirement: milestones and
     skillRequirements are two independent lists on the same skillPlans.jsonl
-    row, each flattened into its own join model, same flatten-and-wipe
-    pattern as CorporationRoleGroupMembership.
+    row, each flattened into its own join model, same flatten-and-sync
+    pattern as CorporationRoleGroupMembership. A plan can require the same
+    skill at several levels, so level is part of the requirement's key.
 """
 # Standard Library
 import json
@@ -224,7 +225,7 @@ class CorporationRoleGroupMembershipLoadTests(TestCase):
 
         self.assertEqual(CorporationRoleGroupMembership.objects.count(), 0)
 
-    def test_rerun_wipes_and_reloads_instead_of_duplicating(self):
+    def test_rerun_syncs_instead_of_duplicating(self):
         CorporationRole.objects.create(id=1, name="Project Hangar Take")
         self._write_roles([{"_key": 1, "roleGroupIDs": [1, 4]}])
 
@@ -344,7 +345,7 @@ class SkillPlanMilestoneAndSkillRequirementLoadTests(TestCase):
         self.assertEqual(requirement.level, 1)
         self.assertEqual(str(requirement), "Minmatar Militia Fighter (Small Hybrid Turret 1)")
 
-    def test_rerun_wipes_and_reloads_instead_of_duplicating(self):
+    def test_rerun_syncs_instead_of_duplicating(self):
         self._write_skill_plan(
             milestones=[{"level": 3, "typeID": 3329}],
             skill_requirements=[{"level": 1, "typeID": 3327}],
@@ -357,3 +358,17 @@ class SkillPlanMilestoneAndSkillRequirementLoadTests(TestCase):
 
         self.assertEqual(SkillPlanMilestone.objects.count(), 1)
         self.assertEqual(SkillPlanSkillRequirement.objects.count(), 1)
+
+    def test_same_skill_required_at_several_levels_keeps_every_level(self):
+        self._write_skill_plan(
+            milestones=[],
+            skill_requirements=[{"level": 1, "typeID": 3327}, {"level": 3, "typeID": 3327}],
+        )
+
+        SkillPlanSkillRequirement.load_from_sde(self.tmpdir)
+        SkillPlanSkillRequirement.load_from_sde(self.tmpdir)
+
+        self.assertEqual(
+            sorted(SkillPlanSkillRequirement.objects.values_list("level", flat=True)),
+            [1, 3],
+        )

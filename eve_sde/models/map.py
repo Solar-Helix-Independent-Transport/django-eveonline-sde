@@ -372,7 +372,7 @@ class Star(UniverseBase):
 
 class Stargate(UniverseBase):
     """
-    # Is Deleted and reloaded on updates. Don't F-Key to this model ATM.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
     mapStargates.jsonl
         _key : int
         destination : dict
@@ -388,8 +388,9 @@ class Stargate(UniverseBase):
     class Import:
         filename = "mapStargates.jsonl"
         lang_fields = False
-        update_fields = False
+        update_fields = ["name", "destination_id", "item_type_id", "solar_system_id"]
         custom_names = False
+        natural_key = ("id",)
         data_map = False
 
     destination = models.ForeignKey(
@@ -438,14 +439,6 @@ class Stargate(UniverseBase):
             name=f"{system_names[src_id]} ≫ {system_names[dst_id]}",
             solar_system_id=src_id,
         )
-
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
 
 
 class NPCStation(UniverseBase):

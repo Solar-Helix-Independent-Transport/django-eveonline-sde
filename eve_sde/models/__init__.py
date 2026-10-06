@@ -8,6 +8,7 @@ from solo.models import SingletonModel
 
 # Django EVE SDE
 from eve_sde.models.admin import *
+from eve_sde.models.certificates import *
 from eve_sde.models.freelance import *
 from eve_sde.models.industry import *
 from eve_sde.models.lore import *

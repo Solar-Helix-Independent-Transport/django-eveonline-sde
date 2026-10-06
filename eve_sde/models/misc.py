@@ -136,7 +136,7 @@ class CorporationRole(TypeBase):
 
 class CorporationRoleGroupMembership(JSONModel):
     """
-    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
     corporationRoles.jsonl
         _key : int
         * roleGroupIDs : list
@@ -151,6 +151,7 @@ class CorporationRoleGroupMembership(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("corporation_role_id", "role_group_id")
 
     corporation_role = models.ForeignKey(
         CorporationRole,
@@ -179,16 +180,12 @@ class CorporationRoleGroupMembership(JSONModel):
 
         return _out
 
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
-
     class Meta:
         default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["corporation_role", "role_group"],
+                                    name="esde_corporationrolegroupmembership_nk"),
+        ]
 
     def __str__(self):
         return f"{self.corporation_role.name} ({self.role_group.name})"
@@ -275,7 +272,7 @@ class SkillPlan(TypeBase):
 
 class SkillPlanMilestone(JSONModel):
     """
-    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
     skillPlans.jsonl
         _key : int
         * milestones : list
@@ -293,6 +290,7 @@ class SkillPlanMilestone(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("skill_plan_id", "item_type_id")
 
     skill_plan = models.ForeignKey(
         SkillPlan,
@@ -322,16 +320,11 @@ class SkillPlanMilestone(JSONModel):
 
         return _out
 
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
-
     class Meta:
         default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["skill_plan", "item_type"], name="esde_skillplanmilestone_nk"),
+        ]
 
     def __str__(self):
         return f"{self.skill_plan.name} ({self.item_type.name} {self.level})"
@@ -339,7 +332,7 @@ class SkillPlanMilestone(JSONModel):
 
 class SkillPlanSkillRequirement(JSONModel):
     """
-    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
     skillPlans.jsonl
         _key : int
         * skillRequirements : list
@@ -357,6 +350,7 @@ class SkillPlanSkillRequirement(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("skill_plan_id", "item_type_id", "level")
 
     skill_plan = models.ForeignKey(
         SkillPlan,
@@ -386,16 +380,12 @@ class SkillPlanSkillRequirement(JSONModel):
 
         return _out
 
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
-
     class Meta:
         default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["skill_plan", "item_type", "level"],
+                                    name="esde_skillplanskillrequirement_nk"),
+        ]
 
     def __str__(self):
         return f"{self.skill_plan.name} ({self.item_type.name} {self.level})"

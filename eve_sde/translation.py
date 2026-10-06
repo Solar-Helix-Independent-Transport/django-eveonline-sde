@@ -2,6 +2,7 @@
 from modeltranslation.translator import TranslationOptions, translator
 
 # Django EVE SDE
+from eve_sde.models.certificates import Certificate
 from eve_sde.models.freelance import FreelanceJobSchema, FreelanceJobSchemaParameter
 from eve_sde.models.lore import Archetype
 from eve_sde.models.map import (
@@ -44,6 +45,7 @@ translator.register(CorporationRole, NameAndDescriptionTranslationOptions)
 translator.register(Landmark, NameAndDescriptionTranslationOptions)
 translator.register(SkillPlan, NameAndDescriptionTranslationOptions)
 translator.register(TypeList, NameAndDescriptionTranslationOptions)
+translator.register(Certificate, NameAndDescriptionTranslationOptions)
 
 
 class NameTranslationOptions(TranslationOptions):

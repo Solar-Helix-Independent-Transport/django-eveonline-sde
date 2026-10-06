@@ -662,6 +662,12 @@ certificates.jsonl
         name.zh : str
     recommendedFor : list
     skillTypes : list
+        _key : int
+        advanced : int
+        basic : int
+        elite : int
+        improved : int
+        standard : int
 npcCharacters.jsonl
     _key : int
     bloodlineID : int
@@ -1080,6 +1086,8 @@ mapSolarSystems.jsonl
 masteries.jsonl
     _key : int
     _value : list
+        _key : int
+        _value : list
 mapStars.jsonl
     _key : int
     radius : int

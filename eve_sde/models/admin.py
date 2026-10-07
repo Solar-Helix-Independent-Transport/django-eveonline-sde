@@ -8,3 +8,5 @@ class EveSDESection(models.Model):
     last_update = models.DateTimeField()
     total_lines = models.IntegerField()
     total_rows = models.IntegerField()
+    # JSONModel.import_fingerprint() of the code that last loaded this section
+    import_fingerprint = models.CharField(max_length=64, blank=True, default="")

@@ -94,6 +94,7 @@ class BlueprintActivityProduct(JSONModel):
 
     class Import:
         filename = "blueprints.jsonl"
+        depends_on = (("types", {"ops": {"added", "removed"}}),)  # unknown typeIDs are nulled
         lang_fields = False
         data_map = (
             ("blueprint_activity_id", "blueprint_activity_id"),  # Added manually
@@ -179,6 +180,7 @@ class BlueprintActivityMaterial(JSONModel):
 
     class Import:
         filename = "blueprints.jsonl"
+        depends_on = (("types", {"ops": {"added", "removed"}}),)  # unknown typeIDs are nulled
         lang_fields = False
         data_map = (
             ("blueprint_activity_id", "blueprint_activity_id"),

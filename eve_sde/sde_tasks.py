@@ -4,13 +4,14 @@ import logging
 import os
 import shutil
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 # Third Party
 import httpx
 
 # Django EVE SDE
-from eve_sde.models import EveSDE
+from eve_sde.app_settings import ESDE_FULL_UPDATE_DAYS, ESDE_SELECTIVE_UPDATES
+from eve_sde.models import EveSDE, EveSDESection
 from eve_sde.models.certificates import (
     Certificate,
     CertificateRecommendedType,
@@ -127,6 +128,11 @@ SDE_PARTS_TO_UPDATE = [
 ]
 
 SDE_URL = "https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip"
+SDE_BUILD_URL = "https://developers.eveonline.com/static-data/tranquility/eve-online-static-data-{build}-jsonl.zip"
+SDE_LATEST_URL = "https://developers.eveonline.com/static-data/tranquility/latest.jsonl"
+SDE_CHANGES_URL = "https://developers.eveonline.com/static-data/tranquility/changes/{build}.jsonl"
+# Builds walked back through the changes feed before giving up and loading everything
+SDE_MAX_CHANGE_BUILDS = 50
 SDE_FILE_NAME = "eve-online-static-data-latest-jsonl.zip"
 SDE_FOLDER = "eve-sde"
 
@@ -168,20 +174,21 @@ def delete_sde_folder():
         shutil.rmtree(SDE_FOLDER)
 
 
-def check_sde_version():
+def get_latest_sde():
     """
     {"_key": "sde", "buildNumber": 3142455, "releaseDate": "2025-12-15T11:14:02Z"}
     """
-    url = "https://developers.eveonline.com/static-data/tranquility/latest.jsonl"
     try:
-        response = httpx.get(url)
+        response = httpx.get(SDE_LATEST_URL)
         response.raise_for_status()
-        data = response.json()
+        return response.json()
     except Exception:
-        logger.exception(f"Failed to check SDE version from {url}")
+        logger.exception(f"Failed to check SDE version from {SDE_LATEST_URL}")
         raise
 
-    build_number = data.get("buildNumber")
+
+def check_sde_version():
+    build_number = get_latest_sde().get("buildNumber")
 
     current = EveSDE.get_solo()
 
@@ -191,9 +198,121 @@ def check_sde_version():
     return True
 
 
-def download_extract_sde():
+def fetch_sde_changes(target_build: int, since_build: int):
+    """
+    Walk CCP's changes feed back from target_build until it reaches
+    since_build. Returns [(build, {file key: change record})] newest first,
+    or None when the chain can't be followed (missing/expired build, bad
+    data, too far back), meaning everything has to be loaded.
+
+    {"_key":"_meta","buildNumber":3579973,"lastBuildNumber":3569502,...}
+    {"_key":"blueprints","added":[95742,...],"changed":[88267]}
+    """
+    builds = []
+    build = target_build
+    while build > since_build:
+        if len(builds) >= SDE_MAX_CHANGE_BUILDS:
+            logger.warning(f"SDE changes - more than {SDE_MAX_CHANGE_BUILDS} builds since {since_build}")
+            return None
+        url = SDE_CHANGES_URL.format(build=build)
+        try:
+            response = httpx.get(url, follow_redirects=True)
+            response.raise_for_status()
+            records = [json.loads(_l) for _l in response.text.splitlines() if _l.strip()]
+        except Exception:
+            logger.warning(f"SDE changes - failed to read {url}", exc_info=True)
+            return None
+        files = {_r["_key"]: _r for _r in records if isinstance(_r, dict) and "_key" in _r}
+        meta = files.pop("_meta", {})
+        last_build = meta.get("lastBuildNumber")
+        if meta.get("buildNumber") != build or not isinstance(last_build, int) or last_build >= build:
+            logger.warning(f"SDE changes - no usable _meta in {url}: {meta}")
+            return None
+        builds.append((build, files))
+        build = last_build
+    return builds
+
+
+def merge_sde_changes(builds, since_build: int):
+    """
+    {file key: {"ops": {operation, ...}, "ids": {_key, ...}}} over every build
+    in `builds` newer than since_build.
+    """
+    out = {}
+    for build, files in builds:
+        if build <= since_build:
+            continue
+        for key, record in files.items():
+            ops = set()
+            ids = set()
+            for op, val in record.items():
+                if op == "_key" or not val:
+                    continue
+                ops.add(op)
+                if isinstance(val, list):
+                    ids.update(val)
+            if ops:
+                _c = out.setdefault(key, {"ops": set(), "ids": set()})
+                _c["ops"] |= ops
+                _c["ids"] |= ids
+    return out
+
+
+def plan_sde_update(target_build: int, full: bool = False):
+    """
+    {index in SDE_PARTS_TO_UPDATE: reason} for every model that needs loading
+    to bring it to target_build. Models left out are already up to date.
+    """
+    sections = {_s.sde_section: _s for _s in EveSDESection.objects.all()}
+    stale_before = None
+    if ESDE_FULL_UPDATE_DAYS:
+        stale_before = datetime.now(tz=timezone.utc) - timedelta(days=ESDE_FULL_UPDATE_DAYS)
+
+    plan = {}
+    pending = {}  # index: build the model was last loaded from
+    for idx, mdl in enumerate(SDE_PARTS_TO_UPDATE):
+        section = sections.get(mdl.__name__)
+        if full:
+            plan[idx] = "full update"
+        elif not ESDE_SELECTIVE_UPDATES:
+            plan[idx] = "selective updates disabled"
+        elif section is None:
+            plan[idx] = "never loaded"
+        elif section.import_fingerprint != mdl.import_fingerprint():
+            plan[idx] = "import code changed"
+        elif stale_before and section.last_update < stale_before:
+            plan[idx] = f"not loaded in {ESDE_FULL_UPDATE_DAYS} days"
+        elif section.build_number > target_build:
+            plan[idx] = f"loaded from newer build {section.build_number}"
+        elif section.build_number < target_build:
+            pending[idx] = section.build_number
+
+    if pending:
+        builds = fetch_sde_changes(target_build, min(pending.values()))
+        for idx, since in pending.items():
+            if builds is None:
+                plan[idx] = "no SDE change history"
+                continue
+            reason = SDE_PARTS_TO_UPDATE[idx].change_reason(merge_sde_changes(builds, since))
+            if reason:
+                plan[idx] = reason
+
+    return dict(sorted(plan.items()))
+
+
+def log_sde_plan(target_build: int, plan: dict):
+    logger.info(f"SDE Build:{target_build} - loading {len(plan)}/{len(SDE_PARTS_TO_UPDATE)} models")
+    for idx, reason in plan.items():
+        logger.info(f"SDE Build:{target_build} - {SDE_PARTS_TO_UPDATE[idx].__name__}: {reason}")
+
+
+def download_extract_sde(build: int = None):
+    """
+    Download and extract the SDE, pinned to `build` when given, so a release
+    landing mid-update can't mix builds. Defaults to the latest.
+    """
     download_file(
-        SDE_URL,
+        SDE_BUILD_URL.format(build=build) if build else SDE_URL,
         SDE_FILE_NAME
     )
     try:
@@ -207,6 +326,12 @@ def download_extract_sde():
         # the zip is either fully extracted or unusable - either way it has no further use
         delete_sde_zip()
 
+    if build:
+        extracted = read_sde_version().get("buildNumber")
+        if extracted != build:
+            delete_sde_folder()
+            raise ValueError(f"Downloaded SDE build {extracted}, expected {build}")
+
 
 def process_section_of_sde(id: int = 0):
     """
@@ -215,47 +340,72 @@ def process_section_of_sde(id: int = 0):
     SDE_PARTS_TO_UPDATE[id].load_from_sde(SDE_FOLDER)
 
 
-def process_from_sde(start_from: int = 0):
+def process_from_sde(start_from: int = 0, full: bool = False):
     """
-        Update the SDE models in order.
+        Update the SDE models in order, only those the SDE changes feed says
+        changed since they were last loaded unless `full`.
     """
-    download_extract_sde()
+    latest = get_latest_sde()
+    build = latest.get("buildNumber")
+    plan = plan_sde_update(build, full=full)
+    log_sde_plan(build, plan)
+
+    if not plan:
+        # nothing to load, don't download anything
+        finish_sde_update(plan, latest)
+        return
+
+    download_extract_sde(build)
 
     try:
-        count = 0
-        for mdl in SDE_PARTS_TO_UPDATE:
-            if count >= start_from:
+        for idx, mdl in enumerate(SDE_PARTS_TO_UPDATE):
+            if idx in plan and idx >= start_from:
                 logger.info(f"Starting {mdl}")
-                process_section_of_sde(count)
+                process_section_of_sde(idx)
             else:
                 logger.info(f"Skipping {mdl}")
-            count += 1
 
         # only recorded as the current build if every section above completed
-        set_sde_version()
+        finish_sde_update(plan)
     finally:
         delete_sde_folder()
 
 
-def set_sde_version():
+def finish_sde_update(plan, sde_data: dict = None):
     """
-    {"_key": "sde", "buildNumber": 3142455, "releaseDate": "2025-12-15T11:14:02Z"}
+    Record the new build once every planned model has loaded. Models left out
+    of the plan had no changes, so they are now current at this build too.
     """
-    build = 0
-    release = datetime.now(tz=timezone.utc)
+    build = set_sde_version(sde_data)
+    skipped = [_m.__name__ for _i, _m in enumerate(SDE_PARTS_TO_UPDATE) if _i not in plan]
+    if skipped:
+        EveSDESection.objects.filter(sde_section__in=skipped).update(build_number=build)
 
+
+def read_sde_version():
     try:
         with open(f"{SDE_FOLDER}/_sde.jsonl") as json_file:
-            sde_data = json.loads(json_file.read())
-            build = sde_data.get("buildNumber", 0)
-            release_date = sde_data.get("releaseDate")
-            if release_date.endswith("Z"):
-                release_date = release_date[:-1] + "+00:00"
-
-            release = datetime.fromisoformat(release_date)
+            return json.loads(json_file.read())
     except Exception:
         logger.exception(f"Failed to read SDE version from {SDE_FOLDER}/_sde.jsonl")
         raise
+
+
+def set_sde_version(sde_data: dict = None):
+    """
+    {"_key": "sde", "buildNumber": 3142455, "releaseDate": "2025-12-15T11:14:02Z"}
+
+    From the extracted SDE unless given the same record from latest.jsonl.
+    """
+    if sde_data is None:
+        sde_data = read_sde_version()
+    build = sde_data.get("buildNumber", 0)
+    release = datetime.now(tz=timezone.utc)
+    release_date = sde_data.get("releaseDate")
+    if release_date:
+        if release_date.endswith("Z"):
+            release_date = release_date[:-1] + "+00:00"
+        release = datetime.fromisoformat(release_date)
 
     _o = EveSDE.get_solo()
     _o.build_number = build
@@ -263,3 +413,4 @@ def set_sde_version():
     _o.last_check_date = datetime.now(tz=timezone.utc)
     _o.save()
     logger.info(f"SDE Updated to Build:{build} from:{release}")
+    return build

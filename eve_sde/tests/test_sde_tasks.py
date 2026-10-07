@@ -6,6 +6,7 @@ partial state on disk: failed downloads, corrupt zips, malformed rows, and
 partway-through import failures.
 """
 # Standard Library
+import contextlib
 import os
 import shutil
 import tempfile
@@ -17,6 +18,15 @@ from django.test import TestCase
 
 # Django EVE SDE
 from eve_sde import sde_tasks
+
+
+@contextlib.contextmanager
+def _plan_everything(count):
+    """Latest build is 1 and every one of `count` models needs loading."""
+    with mock.patch.object(sde_tasks, "get_latest_sde", return_value={"buildNumber": 1}), \
+            mock.patch.object(sde_tasks, "plan_sde_update", return_value={_i: "test" for _i in range(count)}), \
+            mock.patch.object(sde_tasks, "log_sde_plan"):
+        yield
 
 
 class DownloadFileTests(TestCase):
@@ -164,6 +174,7 @@ class ProcessFromSdeTests(TestCase):
 
         with mock.patch.object(sde_tasks, "download_extract_sde"), \
                 mock.patch.object(sde_tasks, "SDE_PARTS_TO_UPDATE", [model_a, model_b, model_c]), \
+                _plan_everything(3), \
                 mock.patch.object(sde_tasks, "set_sde_version") as mock_set_version, \
                 mock.patch.object(sde_tasks, "delete_sde_folder") as mock_delete_folder:
 
@@ -182,6 +193,7 @@ class ProcessFromSdeTests(TestCase):
 
         with mock.patch.object(sde_tasks, "download_extract_sde"), \
                 mock.patch.object(sde_tasks, "SDE_PARTS_TO_UPDATE", [model_a, model_b]), \
+                _plan_everything(2), \
                 mock.patch.object(sde_tasks, "set_sde_version") as mock_set_version, \
                 mock.patch.object(sde_tasks, "delete_sde_folder") as mock_delete_folder:
 
@@ -197,6 +209,7 @@ class ProcessFromSdeTests(TestCase):
 
         with mock.patch.object(sde_tasks, "download_extract_sde", side_effect=RuntimeError("download failed")), \
                 mock.patch.object(sde_tasks, "SDE_PARTS_TO_UPDATE", [model_a]), \
+                _plan_everything(1), \
                 mock.patch.object(sde_tasks, "set_sde_version") as mock_set_version, \
                 mock.patch.object(sde_tasks, "delete_sde_folder") as mock_delete_folder:
 
@@ -262,6 +275,7 @@ class ProcessFromSdeStartFromTests(TestCase):
 
         with mock.patch.object(sde_tasks, "download_extract_sde"), \
                 mock.patch.object(sde_tasks, "SDE_PARTS_TO_UPDATE", [model_a, model_b]), \
+                _plan_everything(2), \
                 mock.patch.object(sde_tasks, "set_sde_version"), \
                 mock.patch.object(sde_tasks, "delete_sde_folder"):
 

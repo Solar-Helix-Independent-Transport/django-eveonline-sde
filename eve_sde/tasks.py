@@ -19,6 +19,10 @@ from eve_sde.sde_tasks import (
     check_sde_version,
     delete_sde_folder,
     download_extract_sde,
+    finish_sde_update,
+    get_latest_sde,
+    log_sde_plan,
+    plan_sde_update,
     process_from_sde,
     process_section_of_sde,
     set_sde_version,
@@ -87,21 +91,30 @@ def check_for_sde_updates(self):
     base=TaskLockBase,
     **NETWORK_RETRY_KWARGS,
 )
-def update_models_from_sde(self, start_id: int = 0):
+def update_models_from_sde(self, start_id: int = 0, full: bool = False):
     if ESDE_TASK_SPLIT:
+        latest = get_latest_sde()
+        build = latest.get("buildNumber")
+        plan = plan_sde_update(build, full=full)
+        log_sde_plan(build, plan)
+        if not plan:
+            # nothing to load, don't download anything
+            finish_sde_update(plan, latest)
+            return
         queue = [
-            fetch_sde.si(),
+            fetch_sde.si(build),
         ]
-        for id in range(start_id, len(SDE_PARTS_TO_UPDATE)):
-            queue.append(
-                process_sde_section.si(id)
-            )
+        for id in plan:
+            if id >= start_id:
+                queue.append(
+                    process_sde_section.si(id)
+                )
         queue.append(
-            cleanup_sde.si()
+            cleanup_sde.si(list(plan))
         )
         chain(queue).apply_async(link_error=cleanup_sde_after_failure.s())
     else:
-        process_from_sde()
+        process_from_sde(start_from=start_id, full=full)
 
 
 @shared_task(
@@ -117,16 +130,20 @@ def process_sde_section(self, id: int = 0):
     base=TaskLockBase,
     **NETWORK_RETRY_KWARGS,
 )
-def fetch_sde(self):
-    download_extract_sde()
+def fetch_sde(self, build: int = None):
+    download_extract_sde(build)
 
 
 @shared_task(
     bind=True,
     base=TaskLockBase,
 )
-def cleanup_sde(self):
-    set_sde_version()
+def cleanup_sde(self, plan: list = None):
+    if plan is None:
+        # queued before selective updates, every model was loaded
+        set_sde_version()
+    else:
+        finish_sde_update(plan)
     delete_sde_folder()
 
 

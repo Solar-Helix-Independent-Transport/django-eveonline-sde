@@ -70,19 +70,36 @@ class UpdateModelsFromSdeTests(TestCase):
     def test_split_mode_builds_chain_wired_to_the_error_callback(self):
         fake_chain_instance = mock.MagicMock()
 
+        plan = {0: "test", 3: "test", 7: "test"}
         with mock.patch.object(celery_tasks, "ESDE_TASK_SPLIT", True), \
+                mock.patch.object(celery_tasks, "get_latest_sde", return_value={"buildNumber": 5}), \
+                mock.patch.object(celery_tasks, "plan_sde_update", return_value=plan), \
                 mock.patch.object(celery_tasks, "chain", return_value=fake_chain_instance) as mock_chain:
             celery_tasks.update_models_from_sde()
 
         mock_chain.assert_called_once()
         (queue_arg,), _ = mock_chain.call_args
-        # fetch_sde + one process_sde_section per model + cleanup_sde
-        self.assertEqual(len(queue_arg), len(celery_tasks.SDE_PARTS_TO_UPDATE) + 2)
+        # fetch_sde of the build + one process_sde_section per planned model + cleanup_sde
+        self.assertEqual(queue_arg[0].args, (5,))
+        self.assertEqual([_t.args for _t in queue_arg[1:-1]], [(0,), (3,), (7,)])
+        self.assertEqual(queue_arg[-1].args, ([0, 3, 7],))
 
         fake_chain_instance.apply_async.assert_called_once()
         _, apply_kwargs = fake_chain_instance.apply_async.call_args
         self.assertIn("link_error", apply_kwargs)
         self.assertEqual(apply_kwargs["link_error"].task, celery_tasks.cleanup_sde_after_failure.name)
+
+    def test_split_mode_with_nothing_to_load_queues_nothing(self):
+        latest = {"buildNumber": 5}
+        with mock.patch.object(celery_tasks, "ESDE_TASK_SPLIT", True), \
+                mock.patch.object(celery_tasks, "get_latest_sde", return_value=latest), \
+                mock.patch.object(celery_tasks, "plan_sde_update", return_value={}), \
+                mock.patch.object(celery_tasks, "finish_sde_update") as mock_finish, \
+                mock.patch.object(celery_tasks, "chain") as mock_chain:
+            celery_tasks.update_models_from_sde()
+
+        mock_chain.assert_not_called()
+        mock_finish.assert_called_once_with({}, latest)
 
 
 class TaskDelegationTests(TestCase):
@@ -100,6 +117,14 @@ class TaskDelegationTests(TestCase):
             celery_tasks.fetch_sde()
 
         mock_download.assert_called_once()
+
+    def test_cleanup_sde_with_a_plan_finishes_the_selective_update(self):
+        with mock.patch.object(celery_tasks, "finish_sde_update") as mock_finish, \
+                mock.patch.object(celery_tasks, "delete_sde_folder") as mock_delete_folder:
+            celery_tasks.cleanup_sde([1, 2])
+
+        mock_finish.assert_called_once_with([1, 2])
+        mock_delete_folder.assert_called_once()
 
     def test_cleanup_sde_sets_version_then_deletes_folder(self):
         with mock.patch.object(celery_tasks, "set_sde_version") as mock_set_version, \

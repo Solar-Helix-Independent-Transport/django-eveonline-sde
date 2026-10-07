@@ -387,6 +387,7 @@ class Stargate(UniverseBase):
     """
     class Import:
         filename = "mapStargates.jsonl"
+        depends_on = ("mapSolarSystems",)  # names
         lang_fields = False
         update_fields = ["name", "destination_id", "item_type_id", "solar_system_id"]
         custom_names = False
@@ -537,6 +538,7 @@ class Planet(UniverseBase):
     """
     class Import:
         filename = "mapPlanets.jsonl"
+        depends_on = ("mapSolarSystems",)  # names
         lang_fields = False
         update_fields = False
         custom_names = True
@@ -615,6 +617,7 @@ class PlanetResource(JSONModel):
 
     class Import:
         filename = "planetResources.jsonl"
+        depends_on = (("mapPlanets", {"ops": {"added", "removed"}}),)  # field_filters
         lang_fields = False
         data_map = (
             ("planet_id", "_key"),
@@ -673,6 +676,7 @@ class StarResource(JSONModel):
 
     class Import:
         filename = "planetResources.jsonl"
+        depends_on = (("mapStars", {"ops": {"added", "removed"}}),)  # field_filters
         lang_fields = False
         data_map = (
             ("star_id", "_key"),
@@ -741,6 +745,8 @@ class Moon(UniverseBase):
     """
     class Import:
         filename = "mapMoons.jsonl"
+        # names, planet names come from the solar system names
+        depends_on = ("mapPlanets", "mapSolarSystems", ("types", {"ids": {14}}))
         lang_fields = False
         update_fields = False
         custom_names = True

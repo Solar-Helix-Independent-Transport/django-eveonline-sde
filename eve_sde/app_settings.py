@@ -14,6 +14,14 @@ ESDE_BATCH_SIZE = getattr(settings, "ESDE_BATCH_SIZE", 500)
 # if persistent storage is used for `myauth` set to True for smaller update tasks.
 ESDE_TASK_SPLIT = getattr(settings, "ESDE_TASK_SPLIT", False)
 
+# Only reload the models CCP's SDE changes feed says changed since they were
+# last loaded. False reloads every model on every new build.
+ESDE_SELECTIVE_UPDATES = getattr(settings, "ESDE_SELECTIVE_UPDATES", True)
+
+# Safety net for selective updates, reload any model that hasn't been loaded
+# for this many days whatever the changes feed says. 0 to disable.
+ESDE_FULL_UPDATE_DAYS = getattr(settings, "ESDE_FULL_UPDATE_DAYS", 30)
+
 # Models a Freelance job parameter's "character"/"corporation"/"alliance"/
 # "faction" accepted_value_types resolve to - these represent AllianceAuth's
 # ESI-synced character/corp/alliance data, not SDE data, so they're the one

@@ -68,6 +68,52 @@ class LoadFromSdeMalformedRowTests(TestCase):
         self.assertEqual(section.total_rows, 0)
 
 
+class LoadFromSdeRemovedRowTests(TestCase):
+    """Rows missing from the file are noted on the section for delete_removed, not deleted while loading."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
+        with open(os.path.join(self.tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 42, "releaseDate": "2024-01-01T00:00:00Z"}))
+        self._write_categories([self._row(1), self._row(2), self._row(3)])
+        ItemCategory.load_from_sde(self.tmpdir)
+
+    @staticmethod
+    def _row(key):
+        return json.dumps({"_key": key, "name": {"en": f"Category {key}"}, "published": True})
+
+    def _write_categories(self, lines):
+        with open(os.path.join(self.tmpdir, "categories.jsonl"), "w") as f:
+            for line in lines:
+                f.write(line + "\n")
+
+    def test_removed_rows_are_deleted_by_delete_removed(self):
+        self._write_categories([self._row(1)])
+        ItemCategory.load_from_sde(self.tmpdir)
+
+        self.assertEqual(ItemCategory.objects.count(), 3)
+        self.assertEqual(ItemCategory.delete_removed(), 2)
+        self.assertEqual(list(ItemCategory.objects.values_list("pk", flat=True)), [1])
+        self.assertEqual(ItemCategory.delete_removed(), 0)
+
+    def test_a_malformed_row_stops_removal(self):
+        self._write_categories([self._row(1), "{not valid json"])
+        with self.assertLogs("eve_sde.models.base", "WARNING"):
+            ItemCategory.load_from_sde(self.tmpdir)
+
+        self.assertEqual(ItemCategory.delete_removed(), 0)
+        self.assertEqual(ItemCategory.objects.count(), 3)
+
+    def test_a_later_load_with_nothing_removed_clears_the_note(self):
+        self._write_categories([self._row(1)])
+        ItemCategory.load_from_sde(self.tmpdir)
+        self._write_categories([self._row(1), self._row(2), self._row(3)])
+        ItemCategory.load_from_sde(self.tmpdir)
+
+        self.assertEqual(ItemCategory.delete_removed(), 0)
+
+
 class UpdateSdeSectionStateTests(TestCase):
 
     def test_missing_sde_file_raises(self):

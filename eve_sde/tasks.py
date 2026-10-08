@@ -17,6 +17,7 @@ from eve_sde.models import EveSDE
 from eve_sde.sde_tasks import (
     SDE_PARTS_TO_UPDATE,
     check_sde_version,
+    delete_removed_rows,
     delete_sde_folder,
     download_extract_sde,
     finish_sde_update,
@@ -139,6 +140,7 @@ def fetch_sde(self, build: int = None):
     base=TaskLockBase,
 )
 def cleanup_sde(self, plan: list = None):
+    delete_removed_rows()
     if plan is None:
         # queued before selective updates, every model was loaded
         set_sde_version()

@@ -365,10 +365,25 @@ def process_from_sde(start_from: int = 0, full: bool = False):
             else:
                 logger.info(f"Skipping {mdl}")
 
+        delete_removed_rows()
         # only recorded as the current build if every section above completed
         finish_sde_update(plan)
     finally:
         delete_sde_folder()
+
+
+def delete_removed_rows():
+    """
+    Delete the rows each model found missing from the SDE as it loaded,
+    children first, once everything moved to a new parent has been moved.
+    A model whose rows can't be deleted (e.g. another app PROTECTs them) is
+    logged and left, it doesn't stop the update.
+    """
+    for mdl in reversed(SDE_PARTS_TO_UPDATE):
+        try:
+            mdl.delete_removed()
+        except Exception:
+            logger.exception(f"{mdl.__name__} - Failed to remove rows no longer in the SDE")
 
 
 def finish_sde_update(plan, sde_data: dict = None):

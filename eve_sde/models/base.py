@@ -262,6 +262,8 @@ class JSONModel(models.Model):
                 tuple(_r[:-1]): _r[-1] for _r in cls.objects.values_list(*natural_key, "pk")
             }
             seen_keys = set()
+        seen_pks = set()
+        failed_rows = 0
 
         file_path = f"{folder_name}/{cls.Import.filename}"
 
@@ -292,6 +294,7 @@ class JSONModel(models.Model):
                     _new = cls.from_jsonl(rg, name_lookup)
                 except Exception:
                     logger.exception(f"{file_path} - Skipping malformed row {row}")
+                    failed_rows += 1
                     continue
 
                 if natural_key:
@@ -318,6 +321,7 @@ class JSONModel(models.Model):
                                 _updates.append(_i)
                             else:
                                 _creates.append(_i)
+                            seen_pks.add(_i.pk)
                             total_read += 1
                     else:
                         _creates += _new
@@ -328,6 +332,7 @@ class JSONModel(models.Model):
                             _updates.append(_new)
                         else:
                             _creates.append(_new)
+                        seen_pks.add(_new.pk)
                     else:
                         _creates.append(_new)
                     total_read += 1
@@ -350,8 +355,15 @@ class JSONModel(models.Model):
             )
             cls.create_update(_creates, _updates)
 
-        if natural_key:
+        removed = set()
+        if failed_rows:
+            # a row we couldn't read isn't a row CCP removed
+            logger.warning(f"{file_path} - {failed_rows} rows failed, not removing rows missing from the SDE")
+        elif natural_key:
             cls.delete_stale(existing_keys, seen_keys)
+        else:
+            # deleted once every model has loaded, see delete_removed
+            removed = pks - seen_pks
 
         _complete = cls.objects.all().count()
         if _complete != total_lines and _complete != total_read:
@@ -362,7 +374,8 @@ class JSONModel(models.Model):
         cls.update_sde_section_state(
             folder_name,
             cls.__name__,
-            total_lines if _complete == total_lines else total_read, _complete
+            total_lines if _complete == total_lines else total_read, _complete,
+            removed=removed,
         )
 
     @classmethod
@@ -450,7 +463,29 @@ class JSONModel(models.Model):
             cls.objects.filter(pk__in=stale[i:i + ESDE_BATCH_SIZE]).delete()
 
     @classmethod
-    def update_sde_section_state(cls, folder_name: str, section: str, total_lines: int, total_rows: int):
+    def delete_removed(cls) -> int:
+        """
+        Delete the rows the last load found missing from the SDE, returns how
+        many. Not done while loading: most FKs here cascade, and a parent
+        deleted before its children were moved to their new parent would
+        take them with it. Kept on the section until done, so a failed update
+        still deletes them after the next one.
+        """
+        section = EveSDESection.objects.filter(sde_section=cls.__name__).first()
+        if not section or not section.removed_pks:
+            return 0
+        pks = section.removed_pks
+        logger.info(f"{cls.__name__} - Removing {len(pks)} rows no longer in the SDE")
+        for i in range(0, len(pks), ESDE_BATCH_SIZE):
+            cls.objects.filter(pk__in=pks[i:i + ESDE_BATCH_SIZE]).delete()
+        section.removed_pks = []
+        section.save(update_fields=["removed_pks"])
+        return len(pks)
+
+    @classmethod
+    def update_sde_section_state(
+        cls, folder_name: str, section: str, total_lines: int, total_rows: int, removed: set = ()
+    ):
         build = 0
         last_update = datetime.now(tz=timezone.utc)
         try:
@@ -469,6 +504,7 @@ class JSONModel(models.Model):
                 "total_lines": total_lines,
                 "total_rows": total_rows,
                 "import_fingerprint": cls.import_fingerprint(),
+                "removed_pks": sorted(removed, key=str),
             }
         )
 

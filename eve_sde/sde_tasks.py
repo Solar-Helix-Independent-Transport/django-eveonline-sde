@@ -7,7 +7,7 @@ import zipfile
 from datetime import datetime, timedelta, timezone
 
 # Third Party
-import httpx
+import httpx2
 
 # Django EVE SDE
 from eve_sde.app_settings import ESDE_FULL_UPDATE_DAYS, ESDE_SELECTIVE_UPDATES
@@ -139,7 +139,7 @@ SDE_FOLDER = "eve-sde"
 
 def download_file(url, local_filename):
     """
-    Downloads a file from a given URL using httpx and saves it locally.
+    Downloads a file from a given URL using httpx2 and saves it locally.
 
     Args:
         url (str): The URL of the file to download.
@@ -151,7 +151,7 @@ def download_file(url, local_filename):
             local file mistaken for a good one.
     """
     try:
-        with httpx.stream("GET", url, follow_redirects=True) as response:
+        with httpx2.stream("GET", url, follow_redirects=True) as response:
             response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
             with open(local_filename, "wb") as f:
                 for chunk in response.iter_bytes():
@@ -179,7 +179,7 @@ def get_latest_sde():
     {"_key": "sde", "buildNumber": 3142455, "releaseDate": "2025-12-15T11:14:02Z"}
     """
     try:
-        response = httpx.get(SDE_LATEST_URL)
+        response = httpx2.get(SDE_LATEST_URL)
         response.raise_for_status()
         return response.json()
     except Exception:
@@ -216,7 +216,7 @@ def fetch_sde_changes(target_build: int, since_build: int):
             return None
         url = SDE_CHANGES_URL.format(build=build)
         try:
-            response = httpx.get(url, follow_redirects=True)
+            response = httpx2.get(url, follow_redirects=True)
             response.raise_for_status()
             records = [json.loads(_l) for _l in response.text.splitlines() if _l.strip()]
         except Exception:

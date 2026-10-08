@@ -4,7 +4,7 @@
 import logging
 
 # Third Party
-import httpx
+import httpx2
 from celery import chain, shared_task
 
 # Django
@@ -65,7 +65,7 @@ TaskLockBase = _resolve_task_lock_base()
 # next scheduled check. Bad/malformed SDE data is not retried: it will fail
 # the same way every time and should surface immediately.
 NETWORK_RETRY_KWARGS = dict(
-    autoretry_for=(httpx.HTTPError,),
+    autoretry_for=(httpx2.HTTPError,),
     retry_backoff=60,
     retry_backoff_max=600,
     max_retries=5,

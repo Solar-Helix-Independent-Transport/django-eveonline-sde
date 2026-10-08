@@ -36,14 +36,14 @@ def _response(text=None, status=200):
     response = mock.MagicMock()
     response.text = text
     if status != 200:
-        response.raise_for_status.side_effect = sde_tasks.httpx.HTTPStatusError(
+        response.raise_for_status.side_effect = sde_tasks.httpx2.HTTPStatusError(
             str(status), request=mock.MagicMock(), response=mock.MagicMock(status_code=status)
         )
     return response
 
 
 class FeedMixin:
-    """httpx.get serves `self.feed` {build: changes text or status code}."""
+    """httpx2.get serves `self.feed` {build: changes text or status code}."""
 
     def setUp(self):
         super().setUp()
@@ -56,7 +56,7 @@ class FeedMixin:
             _r = self.feed.get(build, 404)
             return _response(status=_r) if isinstance(_r, int) else _response(_r)
 
-        patcher = mock.patch.object(sde_tasks.httpx, "get", side_effect=fake_get)
+        patcher = mock.patch.object(sde_tasks.httpx2, "get", side_effect=fake_get)
         patcher.start()
         self.addCleanup(patcher.stop)
 

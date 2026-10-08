@@ -11,7 +11,7 @@ calling a bound task directly just executes its body synchronously.
 from unittest import mock
 
 # Third Party
-import httpx
+import httpx2
 
 # Django
 from django.test import TestCase
@@ -28,7 +28,7 @@ class RetryConfigTests(TestCase):
             celery_tasks.update_models_from_sde,
             celery_tasks.fetch_sde,
         ):
-            self.assertIn(httpx.HTTPError, task.autoretry_for)
+            self.assertIn(httpx2.HTTPError, task.autoretry_for)
             self.assertEqual(task.max_retries, 5)
             self.assertTrue(task.retry_backoff)
 

@@ -197,7 +197,7 @@ class LoadExtraTests(TestCase):
         fake_response.status_code = 200
         fake_response.json.return_value = {"100001": 12.5}
 
-        with mock.patch("eve_sde.models.base.httpx.get", return_value=fake_response):
+        with mock.patch("eve_sde.models.base.httpx2.get", return_value=fake_response):
             result = ItemType.load_extra()
 
         self.assertEqual(result, {100001: {"packaged_volume": 12.5}})
@@ -206,13 +206,13 @@ class LoadExtraTests(TestCase):
         fake_response = mock.MagicMock()
         fake_response.status_code = 404
 
-        with mock.patch("eve_sde.models.base.httpx.get", return_value=fake_response):
+        with mock.patch("eve_sde.models.base.httpx2.get", return_value=fake_response):
             result = ItemType.load_extra()
 
         self.assertEqual(result, {})
 
     def test_request_exception_is_logged_and_does_not_raise(self):
-        with mock.patch("eve_sde.models.base.httpx.get", side_effect=RuntimeError("network down")):
+        with mock.patch("eve_sde.models.base.httpx2.get", side_effect=RuntimeError("network down")):
             result = ItemType.load_extra()
 
         self.assertEqual(result, {})
@@ -245,7 +245,7 @@ class LoadFromSdeExtraDataMergeTests(TestCase):
         fake_response.status_code = 200
         fake_response.json.return_value = {"100001": 12.5}
 
-        with mock.patch("eve_sde.models.base.httpx.get", return_value=fake_response):
+        with mock.patch("eve_sde.models.base.httpx2.get", return_value=fake_response):
             ItemType.load_from_sde(tmpdir)
 
         self.assertEqual(ItemType.objects.get(pk=100001).packaged_volume, 12.5)

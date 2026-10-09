@@ -2,7 +2,6 @@
 import json
 import logging
 from datetime import datetime, timezone
-from functools import reduce
 
 # Third Party
 import httpx

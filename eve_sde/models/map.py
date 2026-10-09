@@ -602,7 +602,7 @@ class Planet(UniverseBase):
     def format_name(cls, json_data, system_names, lang: str = None):
         system = system_names[json_data.get('solarSystemID')][f"name_{lang}"]
         if not system:
-            system = system_names[json_data.get('solarSystemID')][f"name"]
+            system = system_names[json_data.get('solarSystemID')]["name"]
         return f"{system} {to_roman_numeral(json_data.get('celestialIndex'))}"
 
 
@@ -822,11 +822,11 @@ class Moon(UniverseBase):
     def format_name(cls, json_data, name_lookup, lang):
         planet = name_lookup["planet"][json_data.get('orbitID')][f"name_{lang}"]
         if not planet:
-            planet = name_lookup["planet"][json_data.get('orbitID')][f"name"]
+            planet = name_lookup["planet"][json_data.get('orbitID')]["name"]
 
         moon = name_lookup["item_type"].get(json_data.get("typeID"), {}).get(f"name_{lang}", "Moon")
         if not moon:
-            moon = name_lookup["item_type"].get(json_data.get("typeID"), {}).get(f"name", "Moon")
+            moon = name_lookup["item_type"].get(json_data.get("typeID"), {}).get("name", "Moon")
 
         return (
             f"{planet} - {moon} {json_data.get('orbitIndex')}"

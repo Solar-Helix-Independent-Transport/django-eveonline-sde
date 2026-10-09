@@ -52,3 +52,36 @@ version.path = "eve_sde/__init__.py"
 build.include = [
     "eve_sde",
 ]
+
+[tool.autopep8]
+ignore = [ "E203", "E231", "E501", "W291", "W293", "W503" ]
+select = [ "B", "B950", "C", "E", "F", "W" ]
+exclude = ".git,*migrations*,.tox,dist,htmlcov"
+max-line-length = 120
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+sections = [
+    "FUTURE",
+    "STDLIB",
+    "THIRDPARTY",
+    "DJANGO",
+    "ALLIANCEAUTH",
+    "FIRSTPARTY",
+    "LOCALFOLDER",
+]
+skip_gitignore = true
+import_heading_stdlib = "Standard Library"
+import_heading_thirdparty = "Third Party"
+import_heading_firstparty = "Django EVE SDE"
+import_heading_allianceauth = "Alliance Auth"
+import_heading_django = "Django"
+known_allianceauth = [ "allianceauth", "esi" ]
+known_django = [ "django" ]
+
+[tool.flake8]
+exclude = [ ".git", "*migrations*", ".tox", "dist", "htmlcov" ]
+max-line-length = 120
+select = [ "C", "E", "F", "W", "B", "B950" ]
+ignore = [ "E203", "E231", "E501", "W503", "W291", "W293" ]

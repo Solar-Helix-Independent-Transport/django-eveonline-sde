@@ -27,20 +27,8 @@ help:
 .PHONY: translations
 translations:
 	@echo "Creating or updating translation files"
-	@django-admin makemessages \
-		-l cs_CZ \
-		-l de \
-		-l es \
-		-l fr_FR \
-		-l it_IT \
-		-l ja \
-		-l ko_KR \
-		-l nl_NL \
-		-l pl_PL \
-		-l ru \
-		-l sk \
-		-l uk \
-		-l zh_Hans \
+	@cd $(package) && django-admin makemessages \
+		-l en \
 		--keep-pot \
 		--ignore 'build/*'
 
@@ -48,20 +36,7 @@ translations:
 .PHONY: compile_translations
 compile_translations:
 	@echo "Compiling translation files"
-	@django-admin compilemessages \
-		-l cs_CZ \
-		-l de \
-		-l es \
-		-l fr_FR \
-		-l it_IT \
-		-l ja \
-		-l ko_KR \
-		-l nl_NL \
-		-l pl_PL \
-		-l ru \
-		-l sk \
-		-l uk \
-		-l zh_Hans
+	@cd $(package) && django-admin compilemessages
 
 # Graph models
 .PHONY: graph_models

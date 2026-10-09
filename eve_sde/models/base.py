@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from functools import reduce
 
 # Third Party
-import httpx
+import httpx2
 
 # Django
 from django.db import models
@@ -75,7 +75,7 @@ class JSONModel(models.Model):
             for url, parser, fields in cls.Import.extra_data:
                 logger.info(f"Loading extra data from {url} for {cls.__name__}")
                 try:
-                    r = httpx.get(url)
+                    r = httpx2.get(url)
                     if r.status_code == 200:
                         data = r.json()
                         if parser == "id_dict":

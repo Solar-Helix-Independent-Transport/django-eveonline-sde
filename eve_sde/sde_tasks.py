@@ -7,7 +7,7 @@ import zipfile
 from datetime import datetime, timezone
 
 # Third Party
-import httpx
+import httpx2
 
 # Django EVE SDE
 from eve_sde.models import EveSDE
@@ -134,7 +134,7 @@ def download_file(url, local_filename):
             local file mistaken for a good one.
     """
     try:
-        with httpx.stream("GET", url, follow_redirects=True) as response:
+        with httpx2.stream("GET", url, follow_redirects=True) as response:
             response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
             with open(local_filename, "wb") as f:
                 for chunk in response.iter_bytes():
@@ -163,7 +163,7 @@ def check_sde_version():
     """
     url = "https://developers.eveonline.com/static-data/tranquility/latest.jsonl"
     try:
-        response = httpx.get(url)
+        response = httpx2.get(url)
         response.raise_for_status()
         data = response.json()
     except Exception:

@@ -146,14 +146,14 @@ repos:
         description: Enforce that python3.6+ type annotations are used instead of type comments.
 
   - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
-    rev: bebfac867564fbd992e5b45379b4b0568d5cb85b  # frozen: 3.6.1
+    rev: e8b4e28241a9ae8296ba6e4a491b5da4eda73283  # frozen: 3.11.1
     hooks:
       - id: editorconfig-checker
         name: EditorConfig Checker
         description: Check for compliance with the definitions in the EditorConfig file.
 
   - repo: https://github.com/adamchainz/django-upgrade
-    rev: bdcc9646c249f00ec9781751791e7b75b48b3722  # frozen: 1.31.1
+    rev: 5a815b88d9286ba45b8c1a4b56e695ff5645c65e  # frozen: 1.33.0
     hooks:
       - id: django-upgrade
         name: Django upgrade
@@ -175,6 +175,15 @@ repos:
     hooks:
       - id: autopep8
 
+  - repo: https://github.com/pycqa/flake8
+    rev: cfbbfdeb2391c14a37e101e92a77f54f329e1726  # frozen: 7.4.1
+    hooks:
+      - id: flake8
+        name: Flake8
+        description: Check Python code for style and logic errors.
+        additional_dependencies:
+          - Flake8-pyproject==1.2.4  # Read flake8 config from pyproject.toml » https://github.com/john-hen/Flake8-pyproject/tags
+
   - repo: https://github.com/asottile/yesqa
     rev: f2ae90cf9e1661ade79d0881186ce4fd7ba6ee79  # frozen: v1.5.0
     hooks:
@@ -183,7 +192,7 @@ repos:
         description: Check for extraneous `# noqa` comments.
 
   - repo: https://github.com/PyCQA/isort
-    rev: 7f321d375f31a2f03833bc9a548e8783f2b5c420  # frozen: 9.0.0b1
+    rev: 9f905615631c545f5aea2516508109350d1d2f7d  # frozen: 9.0.2
     hooks:
       - id: isort
         name: Isort
@@ -202,14 +211,14 @@ repos:
           - mdformat-shfmt==0.2.0  # Mdformat plugin to format shell code blocks » https://github.com/hukkin/mdformat-shfmt/tags
 
   - repo: https://github.com/tox-dev/tox-ini-fmt
-    rev: a7d32d319719ed651332d4b31bf69a73d58b8781  # frozen: 1.7.2
+    rev: 241ced4140307006cfd8b2b9ccfd43b1139cfe4a  # frozen: 1.9.0
     hooks:
       - id: tox-ini-fmt
         name: tox.ini formatter
         description: Format the tox.ini file.
 
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: 3632ea90e7641b574983ddf3a11ccedefff3c881  # frozen: v2.25.3
+    rev: a72ae8edd6eeddb9d942168912362945651212f8  # frozen: v2.30.1
     hooks:
       - id: pyproject-fmt
         name: pyproject.toml formatter
@@ -220,7 +229,7 @@ repos:
           - tox==4.56.4  # https://github.com/tox-dev/tox/releases/latest
 
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: 4b2e70d08cb2ccd26d1fba73588de41c7a5d50b7  # frozen: v0.25
+    rev: 17e12779811926f000bdfa1795f9e3735dd71ac3  # frozen: 0.26
     hooks:
       - id: validate-pyproject
         name: Validate pyproject.toml
@@ -236,7 +245,7 @@ repos:
 #          - --py-version=3.10  # Minimum required Python version for AA. Update as needed.
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 1a4bb160cab6417b3045e1b37b6b72449243e658  # frozen: 0.37.4
+    rev: 4f85d46a92dc17713078e5de73f8a13190edf6fc  # frozen: 0.38.2
     hooks:
       - id: check-github-actions
         name: Check GitHub Actions

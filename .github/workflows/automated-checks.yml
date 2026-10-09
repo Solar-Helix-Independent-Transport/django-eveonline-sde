@@ -62,9 +62,11 @@ jobs:
       matrix:
         python-version:
           # https://endoflife.date/python
-          - '3.11'  # [EOL] End of Life: 31 Dec 2027
-          - '3.12'  # [EOL] End of Life: 31 Dec 2028
+          - '3.10'  # [EOL] End of Life: 31 Oct 2026
+          - '3.11'  # [EOL] End of Life: 31 Oct 2027
+          - '3.12'  # [EOL] End of Life: 31 Oct 2028
           - '3.13'  # [EOL] End of Life: 31 Oct 2029
+          - '3.14'  # [EOL] End of Life: 31 Oct 2030
 #        # MySQL versions to test against
 #        database:
 #          # https://endoflife.date/mysql
@@ -174,12 +176,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade build
-          python -m pip install --upgrade setuptools wheel
 
       # Build Package
       - name: Package Build
-        env:
-          STACKMANAGER_VERSION: 9999
         run: |
           python -m build
 

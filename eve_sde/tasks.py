@@ -1,7 +1,10 @@
 """App Tasks"""
 
+__lazy_modules__ = ["celery"]
+
 # Standard Library
 import logging
+from typing import TYPE_CHECKING, Any
 
 # Third Party
 import httpx2
@@ -23,6 +26,18 @@ from eve_sde.sde_tasks import (
     process_section_of_sde,
     set_sde_version,
 )
+
+if TYPE_CHECKING:
+    # Third Party
+    from celery import Task
+
+    # https://github.com/sbdchd/celery-types
+    classes = [
+        Task,
+    ]
+
+    for cls in classes:
+        setattr(cls, "__class_getitem__", classmethod(lambda cls, *args, **kwargs: cls))
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +88,7 @@ NETWORK_RETRY_KWARGS = dict(
     base=TaskLockBase,
     **NETWORK_RETRY_KWARGS,
 )
-def check_for_sde_updates(self):
+def check_for_sde_updates(self: "Task") -> None:
     if not check_sde_version():
         update_models_from_sde.delay()
 
@@ -87,7 +102,7 @@ def check_for_sde_updates(self):
     base=TaskLockBase,
     **NETWORK_RETRY_KWARGS,
 )
-def update_models_from_sde(self, start_id: int = 0):
+def update_models_from_sde(self: "Task", start_id: int = 0) -> None:
     if ESDE_TASK_SPLIT:
         queue = [
             fetch_sde.si(),
@@ -108,7 +123,7 @@ def update_models_from_sde(self, start_id: int = 0):
     bind=True,
     base=TaskLockBase,
 )
-def process_sde_section(self, id: int = 0):
+def process_sde_section(self: "Task", id: int = 0) -> None:
     process_section_of_sde(id)
 
 
@@ -117,7 +132,7 @@ def process_sde_section(self, id: int = 0):
     base=TaskLockBase,
     **NETWORK_RETRY_KWARGS,
 )
-def fetch_sde(self):
+def fetch_sde(self: "Task") -> None:
     download_extract_sde()
 
 
@@ -125,13 +140,13 @@ def fetch_sde(self):
     bind=True,
     base=TaskLockBase,
 )
-def cleanup_sde(self):
+def cleanup_sde(self: "Task") -> None:
     set_sde_version()
     delete_sde_folder()
 
 
 @shared_task(bind=True)
-def cleanup_sde_after_failure(self, *args, **kwargs):
+def cleanup_sde_after_failure(self: "Task", *args: Any, **kwargs: Any) -> None:
     """
     Error callback for the split-task chain. If any section fails partway
     through, the chain aborts and `cleanup_sde` never runs - this removes the

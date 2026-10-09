@@ -6,15 +6,18 @@ Create your models in here
 # Third Party
 from solo.models import SingletonModel
 
+# Django
+from django.db import models
+
 # Django EVE SDE
-from eve_sde.models.admin import *
-from eve_sde.models.freelance import *
-from eve_sde.models.industry import *
-from eve_sde.models.lore import *
-from eve_sde.models.map import *
-from eve_sde.models.misc import *
-from eve_sde.models.sovereignty import *
-from eve_sde.models.types import *
+from eve_sde.models.admin import *  # noqa: F401, F403
+from eve_sde.models.freelance import *  # noqa: F401, F403
+from eve_sde.models.industry import *  # noqa: F401, F403
+from eve_sde.models.lore import *  # noqa: F401, F403
+from eve_sde.models.map import *  # noqa: F401, F403
+from eve_sde.models.misc import *  # noqa: F401, F403
+from eve_sde.models.sovereignty import *  # noqa: F401, F403
+from eve_sde.models.types import *  # noqa: F401, F403
 
 
 class EveSDE(SingletonModel):

@@ -1,5 +1,5 @@
-appname = example
-package = example
+appname = django-eveonline-sde
+package = eve_sde
 
 # Default goal
 .DEFAULT_GOAL := help
@@ -8,7 +8,7 @@ package = example
 .PHONY: help
 help:
 	@echo ""
-	@echo "$(appname_verbose) Makefile"
+	@echo "$(appname) Makefile"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make [command]"
@@ -17,6 +17,8 @@ help:
 	@echo "  build_test              Build the package"
 	@echo "  coverage                Run tests and create a coverage report"
 	@echo "  graph_models            Create a graph of the models"
+	@echo "  load_sde                Load the SDE into ../myauth"
+	@echo "  load_test               Run the SDE load test with tox"
 	@echo "  pre-commit-checks       Run pre-commit checks"
 	@echo "  tox_tests               Run tests with tox"
 	@echo "  translations            Create or update translation files"
@@ -27,20 +29,8 @@ help:
 .PHONY: translations
 translations:
 	@echo "Creating or updating translation files"
-	@django-admin makemessages \
-		-l cs_CZ \
-		-l de \
-		-l es \
-		-l fr_FR \
-		-l it_IT \
-		-l ja \
-		-l ko_KR \
-		-l nl_NL \
-		-l pl_PL \
-		-l ru \
-		-l sk \
-		-l uk \
-		-l zh_Hans \
+	@cd $(package) && django-admin makemessages \
+		-l en \
 		--keep-pot \
 		--ignore 'build/*'
 
@@ -48,20 +38,7 @@ translations:
 .PHONY: compile_translations
 compile_translations:
 	@echo "Compiling translation files"
-	@django-admin compilemessages \
-		-l cs_CZ \
-		-l de \
-		-l es \
-		-l fr_FR \
-		-l it_IT \
-		-l ja \
-		-l ko_KR \
-		-l nl_NL \
-		-l pl_PL \
-		-l ru \
-		-l sk \
-		-l uk \
-		-l zh_Hans
+	@cd $(package) && django-admin compilemessages
 
 # Graph models
 .PHONY: graph_models
@@ -73,7 +50,7 @@ graph_models:
 		--arrow-shape normal \
 		-o $(appname)-models.png
 
-# Graph models
+# Load the SDE
 .PHONY: load_sde
 load_sde:
 	@echo "Test load the SDE"
@@ -105,8 +82,14 @@ build_test:
 tox_tests:
 	@echo "Running tests with tox"
 	@export USE_MYSQL=False; \
-	tox -v -e allianceauth-latest; \
+	tox -v; \
 	rm -rf .tox/
+
+# SDE load test
+.PHONY: load_test
+load_test:
+	@echo "Running the SDE load test with tox"
+	@tox -v -c tox_import.ini
 
 # Pre-commit checks
 .PHONY: pre-commit-checks

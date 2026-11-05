@@ -15,4 +15,9 @@ class Migration(migrations.Migration):
             name="import_fingerprint",
             field=models.CharField(blank=True, default="", max_length=64),
         ),
+        migrations.AddField(
+            model_name="evesdesection",
+            name="removed_pks",
+            field=models.JSONField(blank=True, default=list),
+        ),
     ]

@@ -16,6 +16,9 @@ from eve_sde.models import (
     BlueprintActivity,
     BlueprintActivityMaterial,
     BlueprintActivityProduct,
+    Certificate,
+    CertificateRecommendedType,
+    CertificateSkill,
     Constellation,
     CorporationRole,
     CorporationRoleGroup,
@@ -32,6 +35,7 @@ from eve_sde.models import (
     ItemType,
     ItemTypeMaterials,
     Landmark,
+    Mastery,
     MetenoxMoonDrill,
     Moon,
     NPCStation,
@@ -332,6 +336,32 @@ class NewAdminQuerysetTests(TestCase):
         category_admin = esde_admin.TypeListCategoryAdmin(TypeListCategory, admin.site)
         category_qs = category_admin.get_queryset(RequestFactory().get("/"))
         self.assertEqual(category_qs.get(pk=category_row.pk).item_category.name, "Structures")
+
+    def test_certificate_admin_querysets(self):
+        item_group = ItemGroup.objects.create(id=255, name="Gunnery")
+        certificate = Certificate.objects.create(id=50, name="Small Energy Turret", group=item_group)
+        skill = ItemType.objects.create(id=3303, name="Small Energy Turret")
+        ship = ItemType.objects.create(id=589, name="Executioner")
+
+        skill_row = CertificateSkill.objects.create(certificate=certificate, item_type=skill, basic=1)
+        recommended_row = CertificateRecommendedType.objects.create(certificate=certificate, item_type=ship)
+        mastery_row = Mastery.objects.create(item_type=ship, level=0, certificate=certificate)
+
+        certificate_admin = esde_admin.CertificateAdmin(Certificate, admin.site)
+        certificate_qs = certificate_admin.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(certificate_qs.get(pk=50).group.name, "Gunnery")
+
+        skill_admin = esde_admin.CertificateSkillAdmin(CertificateSkill, admin.site)
+        skill_qs = skill_admin.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(skill_qs.get(pk=skill_row.pk).item_type.name, "Small Energy Turret")
+
+        recommended_admin = esde_admin.CertificateRecommendedTypeAdmin(CertificateRecommendedType, admin.site)
+        recommended_qs = recommended_admin.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(recommended_qs.get(pk=recommended_row.pk).item_type.name, "Executioner")
+
+        mastery_admin = esde_admin.MasteryAdmin(Mastery, admin.site)
+        mastery_qs = mastery_admin.get_queryset(RequestFactory().get("/"))
+        self.assertEqual(mastery_qs.get(pk=mastery_row.pk).certificate.name, "Small Energy Turret")
 
 
 class EveSDEAdminTests(TestCase):

@@ -372,7 +372,7 @@ class Star(UniverseBase):
 
 class Stargate(UniverseBase):
     """
-    # Is Deleted and reloaded on updates. Don't F-Key to this model ATM.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
     mapStargates.jsonl
         _key : int
         destination : dict
@@ -387,9 +387,11 @@ class Stargate(UniverseBase):
     """
     class Import:
         filename = "mapStargates.jsonl"
+        depends_on = ("mapSolarSystems",)  # names
         lang_fields = False
-        update_fields = False
+        update_fields = ["name", "destination_id", "item_type_id", "solar_system_id"]
         custom_names = False
+        natural_key = ("id",)
         data_map = False
 
     destination = models.ForeignKey(
@@ -438,14 +440,6 @@ class Stargate(UniverseBase):
             name=f"{system_names[src_id]} ≫ {system_names[dst_id]}",
             solar_system_id=src_id,
         )
-
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
 
 
 class NPCStation(UniverseBase):
@@ -544,6 +538,7 @@ class Planet(UniverseBase):
     """
     class Import:
         filename = "mapPlanets.jsonl"
+        depends_on = ("mapSolarSystems",)  # names
         lang_fields = False
         update_fields = False
         custom_names = True
@@ -622,6 +617,7 @@ class PlanetResource(JSONModel):
 
     class Import:
         filename = "planetResources.jsonl"
+        depends_on = (("mapPlanets", {"ops": {"added", "removed"}}),)  # field_filters
         lang_fields = False
         data_map = (
             ("planet_id", "_key"),
@@ -680,6 +676,7 @@ class StarResource(JSONModel):
 
     class Import:
         filename = "planetResources.jsonl"
+        depends_on = (("mapStars", {"ops": {"added", "removed"}}),)  # field_filters
         lang_fields = False
         data_map = (
             ("star_id", "_key"),
@@ -748,6 +745,8 @@ class Moon(UniverseBase):
     """
     class Import:
         filename = "mapMoons.jsonl"
+        # names, planet names come from the solar system names
+        depends_on = ("mapPlanets", "mapSolarSystems", ("types", {"ids": {14}}))
         lang_fields = False
         update_fields = False
         custom_names = True

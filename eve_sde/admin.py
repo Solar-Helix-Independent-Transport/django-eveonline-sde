@@ -399,6 +399,43 @@ class SkillPlanSkillRequirementAdmin(NoEdit):
         return super().get_queryset(request).select_related('skill_plan', 'item_type')
 
 
+@admin.register(models.Certificate)
+class CertificateAdmin(NoEdit):
+    list_display = ('name', 'group')
+    search_fields = ('name', 'group__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('group')
+
+
+@admin.register(models.CertificateSkill)
+class CertificateSkillAdmin(NoEdit):
+    list_display = ('certificate', 'item_type', 'basic', 'standard', 'improved', 'advanced', 'elite')
+    search_fields = ('certificate__name', 'item_type__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('certificate', 'item_type')
+
+
+@admin.register(models.CertificateRecommendedType)
+class CertificateRecommendedTypeAdmin(NoEdit):
+    list_display = ('certificate', 'item_type')
+    search_fields = ('certificate__name', 'item_type__name')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('certificate', 'item_type')
+
+
+@admin.register(models.Mastery)
+class MasteryAdmin(NoEdit):
+    list_display = ('item_type', 'level', 'certificate')
+    search_fields = ('item_type__name', 'certificate__name')
+    list_filter = ('level',)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('item_type', 'certificate')
+
+
 @admin.register(models.TypeList)
 class TypeListAdmin(NoEdit):
     list_display = ('name', 'internal_name')

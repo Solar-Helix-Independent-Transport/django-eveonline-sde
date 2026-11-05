@@ -1,7 +1,7 @@
 """
 Tests for BlueprintActivityProduct/BlueprintActivityMaterial (industry.py):
-both have a custom load_from_sde that (a) wipes and fully reloads on every
-run rather than diffing, and (b) nulls out any typeID that isn't a real,
+both sync in place by (blueprint_activity, item_type) on every run, and
+both have a custom load_from_sde that nulls out any typeID that isn't a real,
 known ItemType instead of dropping the row or letting an FK violation blow
 up the whole import - the SDE is known to contain a few bad references.
 """
@@ -71,11 +71,21 @@ class BlueprintActivityProductTests(BlueprintActivityProductMaterialTestsBase):
         bad = BlueprintActivityProduct.objects.get(item_type__isnull=True)
         self.assertEqual(bad.quantity, 1)
 
-    def test_rerun_wipes_and_reloads_instead_of_duplicating(self):
+    def test_rerun_syncs_instead_of_duplicating(self):
         BlueprintActivityProduct.load_from_sde(self.tmpdir)
         BlueprintActivityProduct.load_from_sde(self.tmpdir)
 
         self.assertEqual(BlueprintActivityProduct.objects.count(), 2)
+
+    def test_rerun_keeps_known_rows_and_replaces_nulled_rows(self):
+        BlueprintActivityProduct.load_from_sde(self.tmpdir)
+        good_pk = BlueprintActivityProduct.objects.get(item_type_id=111).pk
+
+        BlueprintActivityProduct.load_from_sde(self.tmpdir)
+
+        # a NULL item_type can't be matched, so that row is recreated
+        self.assertEqual(BlueprintActivityProduct.objects.get(item_type_id=111).pk, good_pk)
+        self.assertEqual(BlueprintActivityProduct.objects.filter(item_type__isnull=True).count(), 1)
 
     def test_str(self):
         BlueprintActivityProduct.load_from_sde(self.tmpdir)
@@ -94,7 +104,7 @@ class BlueprintActivityMaterialTests(BlueprintActivityProductMaterialTestsBase):
         bad = BlueprintActivityMaterial.objects.get(item_type__isnull=True)
         self.assertEqual(bad.quantity, 3)
 
-    def test_rerun_wipes_and_reloads_instead_of_duplicating(self):
+    def test_rerun_syncs_instead_of_duplicating(self):
         BlueprintActivityMaterial.load_from_sde(self.tmpdir)
         BlueprintActivityMaterial.load_from_sde(self.tmpdir)
 

@@ -54,40 +54,28 @@ jobs:
   # Run Test Coverage
   test-coverage:
     needs: [ pre-commit ]
-    name: AA Latest (Python ${{ matrix.python-version }} with ${{ matrix.database }})
+    name: AA Latest (Python ${{ matrix.python-version }} with ${{ matrix.database.distribution }} ${{ matrix.database.version }})
     runs-on: ubuntu-latest
 
     strategy:
-      # Set Python versions to test against
+      # A failure on one database shouldn't cancel the others, which ones fail
+      # is the useful part
+      fail-fast: false
       matrix:
+        # Set Python versions to test against
         python-version:
           # https://endoflife.date/python
           - '3.11'  # [EOL] End of Life: 31 Dec 2027
           - '3.12'  # [EOL] End of Life: 31 Dec 2028
           - '3.13'  # [EOL] End of Life: 31 Oct 2029
-#        # MySQL versions to test against
-#        database:
-#          # https://endoflife.date/mysql
-#          - mysql:8.0     # [LTS] Maintained until: 30 Apr 2026
-#          - mysql:8.4     # [LTS] Maintained until: 30 Apr 2032
-#          # https://endoflife.date/mariadb and https://mariadb.com/kb/en/mariadb-server-release-dates/
-#          - mariadb:10.6  # [LTS] Maintained until: 06 Jul 2026
-#          - mariadb:10.11 # [LTS] Maintained until: 16 Feb 2028
-#          - mariadb:11.4  # [LTS] Maintained until: 29 May 2029
-#          - mariadb:11.8  # [LTS] Maintained until: 04 Jun 2028
-#
-##    continue-on-error: ${{ matrix.python-version == '3.12' }}
-#
-#    # Set up services
-#    services:
-#      database:
-#        image: ${{ matrix.database }}
-#        env:
-#          MYSQL_ROOT_PASSWORD: temp_password_aa_tox_tests
-#          MYSQL_DATABASE: tox_allianceauth
-#        ports:
-#          - 3306:3306
-#        options: --tmpfs /var/lib/mysql
+        # Set database versions to test against
+        database:
+          # https://endoflife.date/mysql
+          - { distribution: mysql, version: '8.4' }     # [LTS] Maintained until: 30 Apr 2032
+          # https://endoflife.date/mariadb and https://mariadb.com/kb/en/mariadb-server-release-dates/
+          # - { distribution: mariadb, version: '10.11' } # [LTS] Maintained until: 16 Feb 2028
+          - { distribution: mariadb, version: '11.4' }  # [LTS] Maintained until: 29 May 2029
+          - { distribution: mariadb, version: '11.8' }  # [LTS] Maintained until: 04 Jun 2028
 
     steps:
       # Checkout the repository
@@ -104,6 +92,22 @@ jobs:
       - name: Verify that redis is up
         run: redis-cli ping
 
+      # Install and start the database. sqlite silently accepts oversized
+      # ints/strings and defers constraint checks that a real database enforces.
+      - name: Install ${{ matrix.database.distribution }} ${{ matrix.database.version }}
+        uses: shogo82148/actions-setup-mysql@v1
+        with:
+          distribution: ${{ matrix.database.distribution }}
+          mysql-version: ${{ matrix.database.version }}
+          root-password: temp_password_aa_tox_tests
+
+      # mysqlclient needs the MySQL client headers to build against - the same
+      # package works against a MariaDB server.
+      - name: Install MySQL client build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-libmysqlclient-dev pkg-config
+
       # Set up Python
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -118,12 +122,12 @@ jobs:
 
       # Run Tox with the specified environment
       - name: Run Tox
-#        env:
-#          TOX_ENV: allianceauth-latest
-#          DB_HOST: 127.0.0.1
-#          DB_USER: root
-#          DB_PASSWORD: temp_password_aa_tox_tests
-#        run: tox -v -e ${{ env.TOX_ENV }}
+        env:
+          USE_MYSQL: "True"
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: temp_password_aa_tox_tests
         run: tox -v
 
       # Upload coverage to Codecov

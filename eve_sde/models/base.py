@@ -1,4 +1,5 @@
 # Standard Library
+import hashlib
 import json
 import logging
 from datetime import datetime, timezone
@@ -8,7 +9,9 @@ from functools import reduce
 import httpx2
 
 # Django
-from django.db import models
+from django.db import connections, models, router
+from django.db.models.base import ModelState
+from django.utils import translation
 from django.utils.translation import gettext as _
 
 # Django EVE SDE
@@ -17,6 +20,16 @@ from eve_sde.models.admin import EveSDESection
 from eve_sde.models.utils import get_langs, get_langs_for_field, lang_key, val_from_dict
 
 logger = logging.getLogger(__name__)
+
+# SDE changes feed operations, ROW ones list the changed _keys, FILE ones are true
+ROW_CHANGE_OPS = ("added", "changed", "removed", "changedLocalization")
+FILE_CHANGE_OPS = ("schemaChanged", "fileAdded", "fileRemoved", "fileRenamed")
+
+# Rows fetched per query when comparing existing rows, keeps under DB parameter limits.
+COMPARE_CHUNK_SIZE = 2000
+
+# Per model (default __dict__, attnames with callable defaults), see JSONModel.new_instance
+_INSTANCE_TEMPLATES = {}
 
 
 class JSONModel(models.Model):
@@ -28,10 +41,48 @@ class JSONModel(models.Model):
         update_fields = False
         extra_data = False
         field_filters = ()
+        natural_key = False
+        # Other SDE files this model reads while importing, so a change to them
+        # reloads this model too (see change_reason). Each entry is a file key
+        # ("mapSolarSystems": any change), or (file key, {"ids": {...}}) for
+        # changes to those rows only, or (file key, {"ops": {...}}) for those
+        # change operations only, e.g. {"ops": {"added", "removed"}}.
+        depends_on = ()
+        # Bump when the import logic changes in a way the Import config above
+        # doesn't show, so the next update reloads this model.
+        version = 0
+
+    @classmethod
+    def new_instance(cls):
+        """
+        A fresh unsaved instance with every field at its default, without
+        running Model.__init__ (slow with modeltranslation, which resolves a
+        default per translated field per language).
+
+        Clones the __dict__ of one real cls() instance. Fields with a callable
+        default (e.g. JSONField(default=list)) get a fresh value each time so
+        instances never share a mutable default.
+        """
+        template = _INSTANCE_TEMPLATES.get(cls)
+        if template is None:
+            _base = {k: v for k, v in cls().__dict__.items() if k != "_state"}
+            _callables = [
+                f for f in cls._meta.concrete_fields
+                # NOT_PROVIDED is a class, so callable() alone is True for no default
+                if f.has_default() and callable(f.default)
+            ]
+            template = _INSTANCE_TEMPLATES[cls] = (_base, _callables)
+        _base, _callables = template
+        _model = cls.__new__(cls)
+        _model.__dict__.update(_base)
+        for f in _callables:
+            _model.__dict__[f.attname] = f.get_default()
+        _model._state = ModelState()
+        return _model
 
     @classmethod
     def map_to_model(cls, json_data, name_lookup=False, pk=True):
-        _model = cls()
+        _model = cls.new_instance()
         if pk:
             _model.pk = val_from_dict("_key", json_data)
         for f, k in cls.Import.data_map:
@@ -48,7 +99,8 @@ class JSONModel(models.Model):
             setattr(_model, "name", cls.format_name(json_data, name_lookup, "en"))
             for lang in get_langs():
                 _nme = cls.format_name(json_data, name_lookup, lang=lang_key(lang))
-                if _model.name != _nme:
+                # raw value, the descriptor walks the language fallbacks
+                if _model.__dict__["name"] != _nme:
                     setattr(_model, f"name_{lang_key(lang)}", _nme)
 
         return _model
@@ -118,60 +170,80 @@ class JSONModel(models.Model):
                 _fld = _f
                 if isinstance(_f, tuple):
                     _fld, _key = _f
-                _fields += get_langs_for_field(_fld)
+                # the untranslated base column too, not only name_en/name_de/...
+                _fields += [_fld] + get_langs_for_field(_fld)
         if cls.Import.custom_names:
-            _fields += get_langs_for_field("name")
-        return _fields
+            _fields += ["name"] + get_langs_for_field("name")
+        return list(dict.fromkeys(_fields))
+
+    @classmethod
+    def compare_fields(cls):
+        """Fields compared, and written, when an existing row is updated."""
+        _fields = cls.Import.update_fields or (cls.get_data_fields() if cls.Import.data_map else [])
+        _pk = cls._meta.pk
+        # rows are matched by pk, and the pk can't be in an upsert's update_fields
+        return [f for f in _fields if f not in (_pk.name, _pk.attname)]
+
+    @classmethod
+    def existing_values(cls, pks, fields):
+        """{pk: (field values...)} straight from the DB, no model instances."""
+        qs = cls._base_manager.all()
+        if hasattr(qs, "rewrite"):
+            # modeltranslation would otherwise read name_en when asked for name
+            qs = qs.rewrite(False)
+        out = {}
+        for i in range(0, len(pks), COMPARE_CHUNK_SIZE):
+            for row in qs.filter(pk__in=pks[i:i + COMPARE_CHUNK_SIZE]).values_list("pk", *fields):
+                out[row[0]] = row[1:]
+        return out
+
+    @classmethod
+    def changed_models(cls, update_model_list):
+        """The subset of update_model_list that differs from what is stored."""
+        fields = cls.compare_fields()
+        if not fields:
+            return []
+        existing = cls.existing_values([_m.pk for _m in update_model_list], fields)
+        # getattr is what saving writes: a translated base field (e.g. a
+        # display_name only set via lang_fields) is saved as its _en value
+        return [
+            _m for _m in update_model_list
+            if tuple(getattr(_m, f) for f in fields) != existing.get(_m.pk)
+        ]
 
     @classmethod
     def create_update(cls, create_model_list: list["JSONModel"], update_model_list: list["JSONModel"]):
-        # logger.debug(f"{cls} - Creates ({len(create_model_list)})")
         cls.objects.bulk_create(
             create_model_list,
-            # ignore_conflicts=True,
             batch_size=ESDE_BATCH_SIZE
         )
 
-        if len(update_model_list):
-            _e = cls.objects.filter(pk__in=[_i.pk for _i in update_model_list])
-            _checks = {}
-            for _i in _e:
-                _checks[_i.pk] = _i
-            update_model_list = [_s for _s in update_model_list if not cls.is_equal(_s, _checks[_s.pk])]
-            if len(update_model_list) > 0:
-                if cls.Import.update_fields:
-                    # logger.debug(f"{cls} - updates ({len(update_model_list)})")
-                    cls.objects.bulk_update(
-                        update_model_list,
-                        cls.Import.update_fields,
-                        batch_size=ESDE_BATCH_SIZE
-                    )
-                elif cls.Import.data_map:
-                    # logger.debug(f"{cls} - data_map updates ({len(update_model_list)})")
-                    _fields = cls.get_data_fields()
-                    cls.objects.bulk_update(
-                        update_model_list,
-                        _fields,
-                        batch_size=ESDE_BATCH_SIZE
-                    )
-        # logger.debug(f"{cls} - Done")
-
-    @classmethod
-    def is_equal(cls, new, old):
-        if cls.Import.update_fields:
-            for f in cls.Import.update_fields:
-                if getattr(new, f) != getattr(old, f):
-                    return False
-        elif cls.Import.data_map:
-            # logger.debug(f"{cls} - data_map updates ({len(update_model_list)})")
-            _fields = cls.get_data_fields()
-            for f in _fields:
-                if getattr(new, f) != getattr(old, f):
-                    return False
-        return True
+        if not update_model_list:
+            return
+        changed = cls.changed_models(update_model_list)
+        if not changed:
+            return
+        # upsert, a plain INSERT per batch is far faster than bulk_update's CASE WHEN
+        upsert = {"update_conflicts": True, "update_fields": cls.compare_fields()}
+        if connections[router.db_for_write(cls)].features.supports_update_conflicts_with_target:
+            # required by SQLite/PostgreSQL, MySQL raises if it's passed
+            upsert["unique_fields"] = [cls._meta.pk.name]
+        cls.objects.bulk_create(
+            changed,
+            batch_size=ESDE_BATCH_SIZE,
+            **upsert
+        )
 
     @classmethod
     def load_from_sde(cls, folder_name):
+        # setting a translated field (e.g. name) also sets it for the active
+        # language, so pin English for the whole import whatever the worker's
+        # LANGUAGE_CODE is. lang_fields then fills every other language.
+        with translation.override("en"):
+            cls._load_from_sde(folder_name)
+
+    @classmethod
+    def _load_from_sde(cls, folder_name):
         _creates = []
         _updates = []
 
@@ -182,6 +254,16 @@ class JSONModel(models.Model):
         pks = set(
             cls.objects.all().values_list("pk", flat=True)
         )  # if cls.Import.update_fields else False
+
+        natural_key = cls.natural_key_fields()
+        if natural_key:
+            # match incoming rows to existing ones by their data, not their pk
+            existing_keys = {
+                tuple(_r[:-1]): _r[-1] for _r in cls.objects.values_list(*natural_key, "pk")
+            }
+            seen_keys = set()
+        seen_pks = set()
+        failed_rows = 0
 
         file_path = f"{folder_name}/{cls.Import.filename}"
 
@@ -212,15 +294,34 @@ class JSONModel(models.Model):
                     _new = cls.from_jsonl(rg, name_lookup)
                 except Exception:
                     logger.exception(f"{file_path} - Skipping malformed row {row}")
+                    failed_rows += 1
                     continue
 
-                if isinstance(_new, list):
+                if natural_key:
+                    for _i in (_new if isinstance(_new, list) else [_new]):
+                        _nk = tuple(getattr(_i, f) for f in natural_key)
+                        if None in _nk:
+                            # can't be matched, so it's recreated each import
+                            logger.info(f"{file_path} - Row {row} missing natural key {natural_key}: {_nk}")
+                            _creates.append(_i)
+                        elif _nk in seen_keys:
+                            logger.warning(f"{file_path} - Row {row} duplicate natural key {natural_key}: {_nk}")
+                            continue
+                        elif _nk in existing_keys:
+                            _i.pk = existing_keys[_nk]
+                            _updates.append(_i)
+                        else:
+                            _creates.append(_i)
+                        seen_keys.add(_nk)
+                        total_read += 1
+                elif isinstance(_new, list):
                     if pks:
                         for _i in _new:
                             if _i.pk in pks:
                                 _updates.append(_i)
                             else:
                                 _creates.append(_i)
+                            seen_pks.add(_i.pk)
                             total_read += 1
                     else:
                         _creates += _new
@@ -231,6 +332,7 @@ class JSONModel(models.Model):
                             _updates.append(_new)
                         else:
                             _creates.append(_new)
+                        seen_pks.add(_new.pk)
                     else:
                         _creates.append(_new)
                     total_read += 1
@@ -253,6 +355,16 @@ class JSONModel(models.Model):
             )
             cls.create_update(_creates, _updates)
 
+        removed = set()
+        if failed_rows:
+            # a row we couldn't read isn't a row CCP removed
+            logger.warning(f"{file_path} - {failed_rows} rows failed, not removing rows missing from the SDE")
+        elif natural_key:
+            cls.delete_stale(existing_keys, seen_keys)
+        else:
+            # deleted once every model has loaded, see delete_removed
+            removed = pks - seen_pks
+
         _complete = cls.objects.all().count()
         if _complete != total_lines and _complete != total_read:
             logger.warning(
@@ -262,11 +374,118 @@ class JSONModel(models.Model):
         cls.update_sde_section_state(
             folder_name,
             cls.__name__,
-            total_lines if _complete == total_lines else total_read, _complete
+            total_lines if _complete == total_lines else total_read, _complete,
+            removed=removed,
         )
 
     @classmethod
-    def update_sde_section_state(cls, folder_name: str, section: str, total_lines: int, total_rows: int):
+    def sde_file_key(cls):
+        """The key CCP uses for this model's file in the SDE changes feed."""
+        return cls.Import.filename.removesuffix(".jsonl")
+
+    @classmethod
+    def import_fingerprint(cls):
+        """
+        Hash of what decides how this model is imported. Stored with each
+        section, a mismatch (new fields, languages or Import config) means the
+        stored rows predate this code and the model is reloaded in full.
+        """
+        _i = cls.Import
+
+        def _stable(_v):
+            if isinstance(_v, dict):
+                return sorted((k, _stable(v)) for k, v in _v.items())
+            if isinstance(_v, (set, frozenset)):
+                return sorted(_stable(v) for v in _v)
+            if isinstance(_v, (list, tuple)):
+                return [_stable(v) for v in _v]
+            return _v
+
+        parts = [
+            [f.attname for f in cls._meta.concrete_fields],
+            get_langs(),
+            [_f[0] for _f in (getattr(_i, "field_filters", None) or ())],
+        ]
+        for attr in (
+            "filename", "data_map", "lang_fields", "custom_names", "update_fields",
+            "extra_data", "natural_key", "depends_on", "version",
+        ):
+            parts.append(_stable(getattr(_i, attr, None)))
+        return hashlib.sha256(repr(parts).encode()).hexdigest()[:32]
+
+    @classmethod
+    def change_reason(cls, changes: dict):
+        """
+        Why this model needs reloading for these SDE changes, or None.
+
+        `changes` is {file key: {"ops": {operation, ...}, "ids": {_key, ...}}},
+        merged over every build since this model was last loaded.
+        """
+        if getattr(cls.Import, "extra_data", False):
+            return "loads extra data from outside the SDE"
+
+        own = changes.get(cls.sde_file_key())
+        if own:
+            ops = own["ops"]
+            if "fileRemoved" in ops:
+                # loading would fail on the missing file, this needs a code change
+                logger.error(f"{cls.__name__} - {cls.Import.filename} was removed from the SDE, not reloading")
+                return None
+            if "schemaChanged" in ops:
+                logger.warning(f"{cls.__name__} - {cls.Import.filename} schema changed, check the Import config")
+            return f"{cls.sde_file_key()} {', '.join(sorted(ops))}"
+
+        for dep in getattr(cls.Import, "depends_on", ()):
+            key, match = (dep, {}) if isinstance(dep, str) else dep
+            change = changes.get(key)
+            if not change:
+                continue
+            if "ids" in match and not (
+                change["ids"] & set(match["ids"]) or change["ops"] & set(FILE_CHANGE_OPS)
+            ):
+                continue
+            if "ops" in match and not change["ops"] & set(match["ops"]):
+                continue
+            return f"depends on {key}"
+        return None
+
+    @classmethod
+    def natural_key_fields(cls):
+        return getattr(cls.Import, "natural_key", False)
+
+    @classmethod
+    def delete_stale(cls, existing_keys: dict, seen_keys: set):
+        """Delete rows that were in the DB but are no longer in the SDE."""
+        stale = [_pk for _nk, _pk in existing_keys.items() if _nk not in seen_keys or None in _nk]
+        if stale:
+            logger.info(f"{cls.__name__} - Removing {len(stale)} rows no longer in the SDE")
+        for i in range(0, len(stale), ESDE_BATCH_SIZE):
+            cls.objects.filter(pk__in=stale[i:i + ESDE_BATCH_SIZE]).delete()
+
+    @classmethod
+    def delete_removed(cls) -> int:
+        """
+        Delete the rows the last load found missing from the SDE, returns how
+        many. Not done while loading: most FKs here cascade, and a parent
+        deleted before its children were moved to their new parent would
+        take them with it. Kept on the section until done, so a failed update
+        still deletes them after the next one.
+        """
+        section = EveSDESection.objects.filter(sde_section=cls.__name__).first()
+        if not section or not section.removed_pks:
+            return 0
+        pks = section.removed_pks
+        logger.info(f"{cls.__name__} - Removing {len(pks)} rows no longer in the SDE")
+        for i in range(0, len(pks), ESDE_BATCH_SIZE):
+            cls.objects.filter(pk__in=pks[i:i + ESDE_BATCH_SIZE]).delete()
+        section.removed_pks = []
+        section.save(update_fields=["removed_pks"])
+        return len(pks)
+
+    @classmethod
+    def update_sde_section_state(
+        cls, folder_name: str, section: str, total_lines: int, total_rows: int, removed: set = ()
+    ):
         build = 0
         last_update = datetime.now(tz=timezone.utc)
         try:
@@ -283,7 +502,9 @@ class JSONModel(models.Model):
                 "build_number": build,
                 "last_update": last_update,
                 "total_lines": total_lines,
-                "total_rows": total_rows
+                "total_rows": total_rows,
+                "import_fingerprint": cls.import_fingerprint(),
+                "removed_pks": sorted(removed, key=str),
             }
         )
 

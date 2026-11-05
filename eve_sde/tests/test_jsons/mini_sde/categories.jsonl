@@ -1,0 +1,10 @@
+{"_key": 2, "name": {"de": "Interstellar", "en": "Celestial", "es": "Celestial", "fr": "Céleste", "ja": "セレスチャル", "ko": "천체", "ru": "Небесное тело", "zh": "天体"}, "published": true}
+{"_key": 3, "name": {"de": "Station", "en": "Station", "es": "Estación", "fr": "Station", "ja": "ステーション", "ko": "정거장", "ru": "Станция", "zh": "空间站"}, "published": false}
+{"_key": 4, "iconID": 22, "name": {"de": "Material", "en": "Material", "es": "Material", "fr": "Matériau", "ja": "資源", "ko": "자원", "ru": "Материал", "zh": "材料"}, "published": true}
+{"_key": 6, "name": {"de": "Schiff", "en": "Ship", "es": "Nave", "fr": "Vaisseau", "ja": "艦船", "ko": "함선", "ru": "Корабль", "zh": "舰船"}, "published": true}
+{"_key": 9, "iconID": 21, "name": {"de": "Blueprint", "en": "Blueprint", "es": "Plano", "fr": "Plan de construction", "ja": "ブループリント", "ko": "블루프린트", "ru": "Чертеж", "zh": "蓝图"}, "published": true}
+{"_key": 16, "iconID": 33, "name": {"de": "Skill", "en": "Skill", "es": "Habilidad", "fr": "Compétence", "ja": "スキル", "ko": "스킬", "ru": "Навык", "zh": "技能"}, "published": true}
+{"_key": 17, "iconID": 0, "name": {"de": "Bedarfsartikel", "en": "Commodity", "es": "Mercancía", "fr": "Marchandise", "ja": "商品", "ko": "물품", "ru": "Товар", "zh": "常用物品"}, "published": true}
+{"_key": 39, "name": {"de": "Infrastruktur-Upgrades", "en": "Infrastructure Upgrades", "es": "Mejoras de infraestructuras", "fr": "Améliorations d'infrastructure", "ja": "領域施設強化", "ko": "인프라 업그레이드", "ru": "Расширения инфраструктуры", "zh": "基础设施升级件"}, "published": true}
+{"_key": 65, "name": {"de": "Struktur", "en": "Structure", "es": "Estructura", "fr": "Structure", "ja": "ストラクチャ", "ko": "구조물", "ru": "Сооружения", "zh": "建筑"}, "published": true}
+{"_key": 2143, "iconID": 24296, "name": {"de": "Kolonie-Ressourcen", "en": "Colony Resources", "es": "Recursos de la colonia", "fr": "Ressources de colonie", "ja": "コロニーのリソース", "ko": "콜로니 자원", "ru": "Ресурсы колоний", "zh": "殖民地资源"}, "published": true}

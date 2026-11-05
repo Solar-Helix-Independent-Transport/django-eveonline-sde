@@ -1,6 +1,7 @@
 """
 Tests for the generic JSONModel import engine in models/base.py: the
-map_to_model/format_name/get_data_fields/is_equal/load_extra machinery
+map_to_model/new_instance/format_name/get_data_fields/changed_models/
+load_extra machinery
 shared by every concrete SDE model, plus the multi-row-per-line and
 extra-data-merge paths in load_from_sde that no existing model test
 happened to exercise.
@@ -21,14 +22,16 @@ from unittest import mock
 
 # Django
 from django.test import TestCase
+from django.utils import translation
 
 # Django EVE SDE
 from eve_sde.models.base import JSONModel
+from eve_sde.models.freelance import FreelanceJobSchemaParameter
 from eve_sde.models.industry import BlueprintActivity
 from eve_sde.models.lore import Archetype
-from eve_sde.models.map import Planet, SolarSystem
+from eve_sde.models.map import Planet, PlanetResource, SolarSystem
 from eve_sde.models.sovereignty import SovereigntyUpgrade
-from eve_sde.models.types import ItemCategory, ItemType
+from eve_sde.models.types import DogmaUnit, ItemCategory, ItemType
 
 
 class MapToModelCustomNamesTests(TestCase):
@@ -104,23 +107,72 @@ class LocalizedNameTests(TestCase):
         self.assertEqual(category.localized_name, "Tritanium")
 
 
-class IsEqualTests(TestCase):
+class NewInstanceTests(TestCase):
+    """
+    new_instance clones a template instead of running Model.__init__, so it
+    must look exactly like a fresh cls() and never share mutable defaults.
+    """
+
+    def test_matches_a_freshly_constructed_instance(self):
+        fresh = {k: v for k, v in ItemType().__dict__.items() if k != "_state"}
+        cloned = {k: v for k, v in ItemType.new_instance().__dict__.items() if k != "_state"}
+
+        self.assertEqual(cloned, fresh)
+        self.assertTrue(ItemType.new_instance()._state.adding)
+
+    def test_callable_defaults_are_not_shared_between_instances(self):
+        first = FreelanceJobSchemaParameter.new_instance()
+        second = FreelanceJobSchemaParameter.new_instance()
+
+        first.accepted_value_types.append("solarsystem")
+
+        self.assertEqual(second.accepted_value_types, [])
+        self.assertIsNot(first.raw, second.raw)
+
+
+class ChangedModelsTests(TestCase):
 
     def test_update_fields_branch_detects_a_difference(self):
-        old = BlueprintActivity(pk="1:manufacturing", time=100, max_production_limit=10)
+        BlueprintActivity.objects.create(pk="1:manufacturing", time=100, max_production_limit=10)
         new_same = BlueprintActivity(pk="1:manufacturing", time=100, max_production_limit=10)
         new_diff = BlueprintActivity(pk="1:manufacturing", time=200, max_production_limit=10)
 
-        self.assertTrue(BlueprintActivity.is_equal(new_same, old))
-        self.assertFalse(BlueprintActivity.is_equal(new_diff, old))
+        self.assertEqual(BlueprintActivity.changed_models([new_same]), [])
+        self.assertEqual(BlueprintActivity.changed_models([new_diff]), [new_diff])
 
     def test_data_map_branch_detects_a_difference(self):
-        old = ItemCategory(id=1, name="Tritanium", published=True, icon_id=1)
+        ItemCategory.objects.create(id=1, name="Tritanium", published=True, icon_id=1)
         new_same = ItemCategory(id=1, name="Tritanium", published=True, icon_id=1)
         new_diff = ItemCategory(id=1, name="Tritanium", published=False, icon_id=1)
 
-        self.assertTrue(ItemCategory.is_equal(new_same, old))
-        self.assertFalse(ItemCategory.is_equal(new_diff, old))
+        self.assertEqual(ItemCategory.changed_models([new_same]), [])
+        self.assertEqual(ItemCategory.changed_models([new_diff]), [new_diff])
+
+    def test_translated_columns_are_compared(self):
+        ItemCategory.objects.create(id=1, name="Tritanium", name_en="Tritanium", name_de="Tritanium")
+        new_diff = ItemCategory(id=1, name="Tritanium", name_en="Tritanium", name_de="Tritanium DE")
+
+        self.assertEqual(ItemCategory.changed_models([new_diff]), [new_diff])
+
+    def test_base_column_of_a_translated_field_is_compared(self):
+        # modeltranslation reads name_en when asked for name, so a stale base
+        # name column used to go unnoticed
+        ItemCategory.objects.create(id=1, name="Tritanium", name_en="Tritanium")
+        ItemCategory.objects.rewrite(False).filter(pk=1).update(name="Stale")
+        new = ItemCategory(id=1, name="Tritanium", name_en="Tritanium")
+
+        self.assertEqual(ItemCategory.changed_models([new]), [new])
+
+    def test_base_column_only_set_by_lang_fields_is_not_a_false_change(self):
+        # display_name is never set directly, but is saved as display_name_en
+        row = {"_key": 1, "name": "Length", "displayName": {"en": "m", "de": "m"}}
+        DogmaUnit.objects.bulk_create([DogmaUnit.from_jsonl(row)])
+
+        self.assertEqual(DogmaUnit.changed_models([DogmaUnit.from_jsonl(row)]), [])
+
+    def test_primary_key_is_never_a_compare_field(self):
+        self.assertNotIn("planet_id", PlanetResource.compare_fields())
+        self.assertNotIn("planet", PlanetResource.compare_fields())
 
 
 class LoadExtraTests(TestCase):
@@ -285,6 +337,37 @@ class LoadFromSdeSingleRowUpdateTests(TestCase):
         self.assertEqual(ItemCategory.objects.get(pk=1).icon_id, 1)
 
 
+class LoadFromSdeTranslationTests(TestCase):
+    """
+    Setting a translated field also sets it for the active language, so the
+    import is pinned to English whatever the worker's language is.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
+        with open(os.path.join(self.tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+        SolarSystem.objects.create(id=30000142, name="Jita", name_en="Jita")
+        with open(os.path.join(self.tmpdir, "mapPlanets.jsonl"), "w") as f:
+            f.write(json.dumps({"_key": 1, "solarSystemID": 30000142, "celestialIndex": 4}) + "\n")
+
+    def test_custom_names_set_name_en_under_another_active_language(self):
+        with translation.override("de"):
+            Planet.load_from_sde(self.tmpdir)
+
+        planet = Planet.objects.rewrite(False).values("name", "name_en", "name_de").get(pk=1)
+        self.assertEqual(planet, {"name": "Jita IV", "name_en": "Jita IV", "name_de": None})
+
+    def test_stale_base_name_is_repaired_on_reload(self):
+        Planet.load_from_sde(self.tmpdir)
+        Planet.objects.rewrite(False).filter(pk=1).update(name="Stale")
+
+        Planet.load_from_sde(self.tmpdir)
+
+        self.assertEqual(Planet.objects.rewrite(False).values_list("name", flat=True).get(pk=1), "Jita IV")
+
+
 class CreateUpdateNonIdPrimaryKeyTests(TestCase):
     """
     create_update's update-detection query used to hardcode id__in, which
@@ -325,6 +408,35 @@ class CreateUpdateNonIdPrimaryKeyTests(TestCase):
 
         self.assertEqual(SovereigntyUpgrade.objects.count(), 1)
         self.assertEqual(SovereigntyUpgrade.objects.get(pk=1).power_production, 200)
+
+
+class CreateUpdatePrimaryKeyInDataMapTests(TestCase):
+    """
+    PlanetResource's pk is planet (a OneToOneField with primary_key=True)
+    and its data_map sets planet_id. The pk can't be in the update fields,
+    bulk_update refused it, so a changed row used to fail to update.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
+        with open(os.path.join(self.tmpdir, "_sde.jsonl"), "w") as f:
+            f.write(json.dumps({"buildNumber": 1, "releaseDate": "2024-01-01T00:00:00Z"}))
+        system = SolarSystem.objects.create(id=30000001, name="Jita")
+        Planet.objects.create(id=40000001, name="Jita I", solar_system=system)
+
+    def _write_resource(self, power):
+        with open(os.path.join(self.tmpdir, "planetResources.jsonl"), "w") as f:
+            f.write(json.dumps({"_key": 40000001, "power": power, "workforce": 1}) + "\n")
+
+    def test_second_pass_updates_the_changed_row(self):
+        self._write_resource(power=1)
+        PlanetResource.load_from_sde(self.tmpdir)
+
+        self._write_resource(power=2)
+        PlanetResource.load_from_sde(self.tmpdir)
+
+        self.assertEqual(PlanetResource.objects.get(pk=40000001).power, 2)
 
 
 class LoadFromSdeChunkedFlushTests(TestCase):

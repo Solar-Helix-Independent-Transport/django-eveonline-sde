@@ -260,7 +260,7 @@ class ItemType(TypeBase):
 
 class ItemTypeMaterials(JSONModel):
     """
-    # Is Deleted and reloaded on updates. Don't F-Key to this model.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
     typeMaterials.jsonl
         _key : int
         materials : list
@@ -284,6 +284,7 @@ class ItemTypeMaterials(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("item_type_id", "material_item_type_id")
 
     item_type = models.ForeignKey(
         ItemType,
@@ -318,16 +319,11 @@ class ItemTypeMaterials(JSONModel):
 
         return _out
 
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
-
     class Meta:
         default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["item_type", "material_item_type"], name="esde_itemtypematerials_nk"),
+        ]
 
     def __str__(self):
         qty = f" x {self.quantity}"
@@ -382,7 +378,7 @@ class TypeList(JSONModel):
 
 class TypeListType(JSONModel):
     """
-    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
     typeLists.jsonl
         _key : int
         * includedTypeIDs : list
@@ -399,6 +395,7 @@ class TypeListType(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("type_list_id", "item_type_id", "excluded")
 
     type_list = models.ForeignKey(
         TypeList,
@@ -432,16 +429,11 @@ class TypeListType(JSONModel):
 
         return _out
 
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
-
     class Meta:
         default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["type_list", "item_type", "excluded"], name="esde_typelisttype_nk"),
+        ]
 
     def __str__(self):
         marker = "excluded" if self.excluded else "included"
@@ -450,7 +442,7 @@ class TypeListType(JSONModel):
 
 class TypeListGroup(JSONModel):
     """
-    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
     typeLists.jsonl
         _key : int
         * includedGroupIDs : list
@@ -467,6 +459,7 @@ class TypeListGroup(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("type_list_id", "item_group_id", "excluded")
 
     type_list = models.ForeignKey(
         TypeList,
@@ -500,16 +493,11 @@ class TypeListGroup(JSONModel):
 
         return _out
 
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
-
     class Meta:
         default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["type_list", "item_group", "excluded"], name="esde_typelistgroup_nk"),
+        ]
 
     def __str__(self):
         marker = "excluded" if self.excluded else "included"
@@ -518,7 +506,7 @@ class TypeListGroup(JSONModel):
 
 class TypeListCategory(JSONModel):
     """
-    # Is deleted and reloaded on updates, same as ItemTypeMaterials/TypeDogma.
+    # Synced in place by natural key, rows no longer in the SDE are deleted.
     typeLists.jsonl
         _key : int
         * includedCategoryIDs : list
@@ -535,6 +523,7 @@ class TypeListCategory(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("type_list_id", "item_category_id", "excluded")
 
     type_list = models.ForeignKey(
         TypeList,
@@ -577,16 +566,11 @@ class TypeListCategory(JSONModel):
 
         return _out
 
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
-
     class Meta:
         default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["type_list", "item_category", "excluded"], name="esde_typelistcategory_nk"),
+        ]
 
     def __str__(self):
         marker = "excluded" if self.excluded else "included"
@@ -824,6 +808,7 @@ class TypeEffect(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("item_type_id", "dogma_effect_id")
 
     item_type = models.ForeignKey(
         ItemType,
@@ -855,16 +840,11 @@ class TypeEffect(JSONModel):
 
         return _out
 
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
-
     class Meta:
         default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["item_type", "dogma_effect"], name="esde_typeeffect_nk"),
+        ]
 
     def __str__(self):
         return f"{self.item_type} ({self.dogma_effect_id}: {self.dogma_effect.name})"
@@ -892,6 +872,7 @@ class TypeDogma(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("item_type_id", "dogma_attribute_id")
 
     item_type = models.ForeignKey(
         ItemType,
@@ -923,16 +904,11 @@ class TypeDogma(JSONModel):
 
         return _out
 
-    @classmethod
-    def load_from_sde(cls, folder_name):
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            # speed and we are not caring about f-keys or signals on these models
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
-
     class Meta:
         default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["item_type", "dogma_attribute"], name="esde_typedogma_nk"),
+        ]
 
     def __str__(self):
         return f"{self.item_type} ({self.dogma_attribute_id}: {self.dogma_attribute.name})"

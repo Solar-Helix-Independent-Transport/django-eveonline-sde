@@ -6,8 +6,9 @@ model per schema and stashes the irregular extra config fields as a raw
 blob. FreelanceJobSchemaParameter.from_jsonl is more involved: each
 parameter is a oneOf of 4 shapes ("matcher", "boolean", "itemDelivery",
 "options"), only "matcher" is normalized into real columns, "boolean"
-falls back to its "choiceLabel" as a title, and load_from_sde wipes and
-fully reloads on every run (same pattern as the blueprint activity models).
+falls back to its "choiceLabel" as a title, and load_from_sde syncs by id
+on every run, so changes to raw are picked up and removed parameters are
+deleted.
 """
 # Standard Library
 import json
@@ -131,11 +132,29 @@ class FreelanceJobSchemaParameterTests(FreelanceModelsTestsBase):
         self.assertEqual(confirm.kind, "boolean")
         self.assertEqual(confirm.title, "Confirm?")
 
-    def test_rerun_wipes_and_reloads_instead_of_duplicating(self):
+    def test_rerun_syncs_instead_of_duplicating(self):
         FreelanceJobSchemaParameter.load_from_sde(self.tmpdir)
         FreelanceJobSchemaParameter.load_from_sde(self.tmpdir)
 
         self.assertEqual(FreelanceJobSchemaParameter.objects.count(), 2)
+
+    def test_rerun_updates_raw_and_deletes_removed_parameters(self):
+        FreelanceJobSchemaParameter.load_from_sde(self.tmpdir)
+
+        with open(os.path.join(self.tmpdir, "freelanceJobSchemas.jsonl")) as f:
+            row = json.loads(f.readline())
+        schema = row["_value"][0]
+        schema["parameters"] = [p for p in schema["parameters"] if p["_key"] == "target"]
+        schema["parameters"][0]["matcher"]["maxEntries"] = 3
+        with open(os.path.join(self.tmpdir, "freelanceJobSchemas.jsonl"), "w") as f:
+            f.write(json.dumps(row) + "\n")
+
+        FreelanceJobSchemaParameter.load_from_sde(self.tmpdir)
+
+        target = FreelanceJobSchemaParameter.objects.get()
+        self.assertEqual(target.pk, "BoostShield:target")
+        self.assertEqual(target.max_entries, 3)
+        self.assertEqual(target.raw["matcher"]["maxEntries"], 3)
 
     def test_str(self):
         FreelanceJobSchemaParameter.load_from_sde(self.tmpdir)

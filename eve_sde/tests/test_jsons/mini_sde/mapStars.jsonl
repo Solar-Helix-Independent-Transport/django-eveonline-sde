@@ -1,0 +1,4 @@
+{"_key": 40000001, "radius": 63350000, "solarSystemID": 30000001, "statistics": {"age": 4.500999969565573e+17, "life": 6.949000074085007e+17, "luminosity": 0.01575, "spectralClass": "K2 V", "temperature": 4567.0}, "typeID": 45041}
+{"_key": 40000019, "radius": 133000000, "solarSystemID": 30000002, "statistics": {"age": 3.699000039188726e+17, "life": 9.126999980119163e+17, "luminosity": 0.01282, "spectralClass": "K4 V", "temperature": 4234.0}, "typeID": 45037}
+{"_key": 40000040, "radius": 255000000, "solarSystemID": 30000003, "statistics": {"age": 1.7150000263436698e+17, "life": 2.965999961012961e+17, "luminosity": 0.6213, "spectralClass": "G2 V", "temperature": 5705.0}, "typeID": 3799}
+{"_key": 40013180, "radius": 254450000, "solarSystemID": 30000208, "statistics": {"age": 1.776999940845732e+17, "life": 2.5939999586045133e+17, "luminosity": 0.7355, "spectralClass": "G0 V", "temperature": 5956.0}, "typeID": 3799}

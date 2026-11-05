@@ -4,8 +4,8 @@ Tests for the remaining under-covered pieces of map.py:
 - SolarSystem's security-classification properties (high/low/null/wh/
     triglavian/abyssal), including the two deprecated aliases.
 - Stargate: a fully custom from_jsonl/name_lookup (no data_map at all) that
-    builds a "system A >> system B" display name, wiped and reloaded on
-    every run like the other "don't F-key to this" models.
+    builds a "system A >> system B" display name, synced in place by id
+    on every run so renames are applied and removed gates are deleted.
 - Planet/Moon's __str__ and localized_name, and Moon's two-part
     name_lookup/format_name (it derives its name from both its parent planet
     AND its own item type, unlike Planet which only needs the solar system).
@@ -143,11 +143,22 @@ class StargateTests(TestCase):
         self.assertEqual(gate.solar_system_id, 30000001)
         self.assertEqual(gate.destination_id, 30000002)
 
-    def test_rerun_wipes_and_reloads_instead_of_duplicating(self):
+    def test_rerun_syncs_instead_of_duplicating(self):
         Stargate.load_from_sde(self.tmpdir)
         Stargate.load_from_sde(self.tmpdir)
 
         self.assertEqual(Stargate.objects.count(), 1)
+
+    def test_rerun_applies_renames_and_deletes_removed_gates(self):
+        Stargate.objects.create(id=999, name="Gone ≫ Gone")
+        Stargate.load_from_sde(self.tmpdir)
+
+        SolarSystem.objects.filter(pk=30000002).update(name="Perimeter II")
+        Stargate.load_from_sde(self.tmpdir)
+
+        gate = Stargate.objects.get()
+        self.assertEqual(gate.pk, 1000)
+        self.assertEqual(gate.name, "Jita ≫ Perimeter II")
 
 
 class PlanetMoonDisplayTests(TestCase):

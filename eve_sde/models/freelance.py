@@ -141,6 +141,7 @@ class FreelanceJobSchemaParameter(JSONModel):
         )
         update_fields = False
         custom_names = False
+        natural_key = ("id",)
 
     _KINDS = ("matcher", "boolean", "itemDelivery", "options")
 
@@ -198,12 +199,9 @@ class FreelanceJobSchemaParameter(JSONModel):
         return _out
 
     @classmethod
-    def load_from_sde(cls, folder_name):
-        # Is deleted and reloaded on every update - don't F-key to this model.
-        gate_qry = cls.objects.all()
-        if gate_qry.exists():
-            gate_qry._raw_delete(gate_qry.db)
-        super().load_from_sde(folder_name)
+    def get_data_fields(cls):
+        # raw isn't in data_map but is the source of truth for most kinds
+        return super().get_data_fields() + ["raw"]
 
 
 def _import_optional_model(dotted_path: str | None):

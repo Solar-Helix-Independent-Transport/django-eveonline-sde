@@ -34,11 +34,13 @@ class EsdeLoadSdeCommandTests(TestCase):
 class EsdeLoadSdeSectionCommandTests(TestCase):
 
     def test_downloads_then_processes_section_seven(self):
-        with mock.patch("eve_sde.management.commands.esde_load_sde_section.download_extract_sde") as mock_download, \
-                mock.patch("eve_sde.management.commands.esde_load_sde_section.process_section_of_sde") as mock_process:
+        cmd = "eve_sde.management.commands.esde_load_sde_section"
+        with mock.patch(f"{cmd}.get_sde_target", return_value=(30, {"buildNumber": 30})), \
+                mock.patch(f"{cmd}.fetch_sde_for_plan") as mock_fetch, \
+                mock.patch(f"{cmd}.process_section_of_sde") as mock_process:
             call_command("esde_load_sde_section")
 
-        mock_download.assert_called_once()
+        mock_fetch.assert_called_once_with(30, {7: None})
         mock_process.assert_called_once_with(7)
 
 
@@ -64,7 +66,7 @@ class EsdeGetAllFieldsCommandTests(TestCase):
 
         out = io.StringIO()
         with mock.patch.object(esde_get_all_fields, "SDE_FOLDER", tmpdir), \
-                mock.patch.object(esde_get_all_fields, "download_extract_sde") as mock_download, \
+                mock.patch.object(esde_get_all_fields, "fetch_whole_sde") as mock_download, \
                 mock.patch.object(esde_get_all_fields, "delete_sde_folder") as mock_delete:
             call_command("esde_get_all_fields", stdout=out)
 

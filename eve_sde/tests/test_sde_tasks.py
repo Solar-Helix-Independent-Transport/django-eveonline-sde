@@ -83,7 +83,9 @@ class DownloadFileTests(TestCase):
         self.assertFalse(os.path.exists(self.target))
 
 
+@mock.patch.object(sde_tasks, "ESDE_SOURCE", "zip")
 class CheckSdeVersionTests(TestCase):
+    """Zip mode, REST is in test_sde_rest_planner."""
 
     def test_raises_when_upstream_check_fails(self):
         with mock.patch.object(sde_tasks.httpx2, "get", side_effect=RuntimeError("network down")):
@@ -164,6 +166,7 @@ class DownloadExtractSdeTests(TestCase):
         self.assertFalse(os.path.exists(self.extract_path))
 
 
+@mock.patch.object(sde_tasks, "ESDE_SOURCE", "zip")
 class ProcessFromSdeTests(TestCase):
 
     def test_failure_partway_through_skips_version_but_still_cleans_up(self):
@@ -267,6 +270,7 @@ class DeleteHelpersTests(TestCase):
             sde_tasks.delete_sde_folder()  # must not raise
 
 
+@mock.patch.object(sde_tasks, "ESDE_SOURCE", "zip")
 class ProcessFromSdeStartFromTests(TestCase):
 
     def test_start_from_skips_earlier_models(self):

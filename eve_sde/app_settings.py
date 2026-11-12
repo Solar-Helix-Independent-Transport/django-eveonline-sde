@@ -22,6 +22,11 @@ ESDE_SELECTIVE_UPDATES = getattr(settings, "ESDE_SELECTIVE_UPDATES", True)
 # for this many days whatever the changes feed says. 0 to disable.
 ESDE_FULL_UPDATE_DAYS = getattr(settings, "ESDE_FULL_UPDATE_DAYS", 30)
 
+# Where the SDE comes from: "rest" is CCP's SDE API (https://sde.evetech.net/),
+# fetching only the tables that changed. "zip" is the whole SDE zip and the
+# build changes feed, kept as a fallback while the API is in Early Access.
+ESDE_SOURCE = getattr(settings, "ESDE_SOURCE", "rest")
+
 # Models a Freelance job parameter's "character"/"corporation"/"alliance"/
 # "faction" accepted_value_types resolve to - these represent AllianceAuth's
 # ESI-synced character/corp/alliance data, not SDE data, so they're the one

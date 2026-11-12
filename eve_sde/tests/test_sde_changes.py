@@ -189,7 +189,9 @@ class ImportFingerprintTests(TestCase):
             self.assertNotEqual(SolarSystem.import_fingerprint(), before)
 
 
+@mock.patch.object(sde_tasks, "ESDE_SOURCE", "zip")
 class PlanSdeUpdateTests(FeedMixin, TestCase):
+    """Zip mode, REST is in test_sde_rest_planner."""
 
     def setUp(self):
         super().setUp()
@@ -286,6 +288,7 @@ class FinishSdeUpdateTests(TestCase):
         self.assertEqual(EveSDESection.objects.get(sde_section="Region").last_update, now)
 
 
+@mock.patch.object(sde_tasks, "ESDE_SOURCE", "zip")
 class ProcessFromSdeSelectiveTests(TestCase):
 
     def test_nothing_to_load_downloads_nothing(self):

@@ -8,7 +8,80 @@ import json
 import logging
 import os
 
+# Third Party
+import httpx2
+
 logger = logging.getLogger(__name__)
+
+SDE_REST_URL = "https://sde.evetech.net/tranquility/{release}/"
+SDE_INFO_FILE = "_sde.jsonl"
+
+
+def download_file(url, local_filename):
+    """
+    Downloads a file from a given URL using httpx2 and saves it locally.
+
+    Args:
+        url (str): The URL of the file to download.
+        local_filename (str): The path and name to save the downloaded file.
+
+    Raises:
+        Exception: Re-raises any download failure after logging it, and removes
+            any partially written file so callers never see a truncated/corrupt
+            local file mistaken for a good one.
+    """
+    try:
+        with httpx2.stream("GET", url, follow_redirects=True) as response:
+            response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
+            with open(local_filename, "wb") as f:
+                for chunk in response.iter_bytes():
+                    f.write(chunk)
+        logger.info(f"File downloaded successfully to: {local_filename}")
+    except Exception:
+        logger.exception(f"Failed to download {url}")
+        if os.path.exists(local_filename):
+            os.remove(local_filename)
+        raise
+
+
+def get_sde_release(release: str = "latest") -> dict:
+    """
+    The index of a release (`latest` follows the redirect to the current one).
+
+    {"release": "20261111T160425Z", "buildNumber": 3687575, "releaseDate": "...", "tables": {
+        "types": {"version": "...", "jsonl": {"url": ..., "recordSchemaUrl": ...}}, ...}}
+    """
+    url = SDE_REST_URL.format(release=release)
+    try:
+        response = httpx2.get(url, follow_redirects=True)
+        response.raise_for_status()
+        return response.json()
+    except Exception:
+        logger.exception(f"Failed to read the SDE release index from {url}")
+        raise
+
+
+def fetch_sde_release(index: dict, tables, folder: str):
+    """
+    Download `tables` and their schemas from the release `index` describes
+    into `folder`, plus an _sde.jsonl recording the release and the version
+    of each table fetched. URLs come from the index, so they're pinned to
+    that release even if a newer one lands meanwhile.
+    """
+    os.makedirs(folder, exist_ok=True)
+    versions = {}
+    for table in tables:
+        info = index["tables"][table]
+        download_file(info["jsonl"]["url"], os.path.join(folder, f"{table}.jsonl"))
+        download_file(info["jsonl"]["recordSchemaUrl"], os.path.join(folder, f"{table}.schema.json"))
+        versions[table] = info["version"]
+    with open(os.path.join(folder, SDE_INFO_FILE), "w") as f:
+        f.write(json.dumps({
+            "release": index["release"],
+            "buildNumber": index["buildNumber"],
+            "releaseDate": index["releaseDate"],
+            "versions": versions,
+        }))
 
 
 def _resolve(node: dict, schema: dict) -> dict:
@@ -44,6 +117,19 @@ def _alias(value, node: dict, schema: dict):
     for name, sub in props.items():
         if name in value:
             _alias(value[name], sub, schema)
+
+
+def sde_tables_for(models) -> list:
+    """
+    Every SDE table `models` read: each one's own and its depends_on
+    tables, once each, in order.
+    """
+    tables = {}
+    for mdl in models:
+        tables[mdl.sde_file_key()] = None
+        for dep in getattr(mdl.Import, "depends_on", ()):
+            tables[dep if isinstance(dep, str) else dep[0]] = None
+    return list(tables)
 
 
 def read_sde_schema(folder: str, filename: str):

@@ -13,6 +13,9 @@ import os
 import shutil
 import tempfile
 
+# Third Party
+import httpx2
+
 # Django
 from django.test import SimpleTestCase, TestCase
 
@@ -24,29 +27,40 @@ from eve_sde.models import (
     ItemCategory,
     ItemType,
     Mastery,
+    Moon,
     Planet,
     PlanetResource,
+    TypeList,
+    TypeListCategory,
+    TypeListType,
 )
-from eve_sde.sde_rest import alias_sde_record
+from eve_sde.sde_rest import (
+    alias_sde_record,
+    fetch_sde_release,
+    get_sde_release,
+    sde_tables_for,
+)
+from eve_sde.tests.rest_fakes import BASE, RELEASE, SCHEMAS, FakeCCP, schema
 
-SCHEMAS = os.path.join(os.path.dirname(__file__), "test_jsons", "rest_schemas")
 
-
-def schema(table):
-    with open(os.path.join(SCHEMAS, f"{table}.schema.json")) as f:
-        return json.load(f)
-
-
-def write_folder(folder, table, rows, rest):
-    """An SDE folder holding `table`, REST style (with its schema) or zip style."""
+def write_folder(folder, table, rows, rest, versions=None):
+    """
+    An SDE folder holding `table`, REST style (with its schema, and the
+    release and table versions in _sde.jsonl) or zip style.
+    """
     os.makedirs(folder, exist_ok=True)
     with open(os.path.join(folder, f"{table}.jsonl"), "w") as f:
         for row in rows:
             f.write(json.dumps(row) + "\n")
+    sde_info = {"_key": "sde", "buildNumber": 3687575, "releaseDate": "2026-11-11T16:04:25Z"}
     if rest:
         shutil.copy(os.path.join(SCHEMAS, f"{table}.schema.json"), folder)
+        sde_info = {
+            "release": RELEASE, "buildNumber": 3687575, "releaseDate": "2026-11-11T16:04:25Z",
+            "versions": {table: f"v-{table}"} if versions is None else versions,
+        }
     with open(os.path.join(folder, "_sde.jsonl"), "w") as f:
-        f.write(json.dumps({"_key": "sde", "buildNumber": 3687575, "releaseDate": "2026-11-11T16:04:25Z"}))
+        f.write(json.dumps(sde_info))
 
 
 class AliasSdeRecordTests(SimpleTestCase):
@@ -238,9 +252,94 @@ class SectionStateTests(TestCase):
         self.assertEqual(section.build_number, 3687575)
         self.assertEqual(section.total_rows, 1)
 
-    def test_rest_load_leaves_rest_state_alone(self):
+    def test_rest_load_records_the_release_and_table_version(self):
         section = self.load(rest=True)
 
-        self.assertEqual(section.release, "20261111T083900Z")
-        self.assertEqual(section.versions, {"categories": "abc"})
+        self.assertEqual(section.release, RELEASE)
+        self.assertEqual(section.versions, {"categories": "v-categories"})
         self.assertEqual(section.build_number, 3687575)
+
+    def test_rest_load_records_only_the_tables_the_model_watches(self):
+        folder = os.path.join(self.tmpdir, "rest")
+        write_folder(folder, "mapMoons", [], rest=True, versions={
+            "mapMoons": "m", "mapPlanets": "p", "mapSolarSystems": "s", "types": "t",
+            "categories": "c",  # fetched for another model
+        })
+
+        Moon.load_from_sde(folder)
+
+        section = EveSDESection.objects.get(sde_section="Moon")
+        self.assertEqual(section.release, RELEASE)
+        self.assertEqual(section.versions, {"mapMoons": "m", "mapPlanets": "p", "mapSolarSystems": "s", "types": "t"})
+
+
+class SdeTablesForTests(SimpleTestCase):
+
+    def test_own_table_and_everything_it_depends_on(self):
+        self.assertEqual(
+            sde_tables_for([Moon]),
+            ["mapMoons", "mapPlanets", "mapSolarSystems", "types"],
+        )
+
+    def test_a_table_shared_by_models_is_listed_once(self):
+        self.assertEqual(
+            sde_tables_for([TypeList, TypeListType, TypeListCategory, ItemType]),
+            ["typeLists", "types"],
+        )
+
+
+class FetchSdeReleaseTests(SimpleTestCase):
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
+        self.folder = os.path.join(self.tmpdir, "eve-sde")
+        self.ccp = FakeCCP({
+            "types": [{"typeID": 587, "groupID": 25}],
+            "masteries": [{"typeID": 587, "levels": []}],
+            "groups": [{"groupID": 25}],
+        })
+        self.ccp.install(self)
+
+    def test_latest_release_index(self):
+        index = get_sde_release()
+
+        self.assertEqual(index["release"], RELEASE)
+        self.assertEqual(index["buildNumber"], 3687575)
+        self.assertEqual(index["tables"]["types"]["version"], "v-types")
+
+    def test_fetches_only_the_tables_asked_for_from_the_pinned_release(self):
+        index = get_sde_release()
+        self.ccp.requested.clear()
+
+        fetch_sde_release(index, ["types", "masteries"], self.folder)
+
+        self.assertEqual(sorted(os.listdir(self.folder)), [
+            "_sde.jsonl",
+            "masteries.jsonl", "masteries.schema.json",
+            "types.jsonl", "types.schema.json",
+        ])
+        with open(os.path.join(self.folder, "types.jsonl")) as f:
+            self.assertEqual(json.loads(f.readline()), {"typeID": 587, "groupID": 25})
+        for url in self.ccp.requested:
+            self.assertTrue(url.startswith(f"{BASE}/{RELEASE}/"), url)
+
+    def test_sde_file_records_the_release_and_fetched_versions(self):
+        fetch_sde_release(get_sde_release(), ["types", "masteries"], self.folder)
+
+        with open(os.path.join(self.folder, "_sde.jsonl")) as f:
+            self.assertEqual(json.loads(f.read()), {
+                "release": RELEASE,
+                "buildNumber": 3687575,
+                "releaseDate": "2026-11-11T16:04:25Z",
+                "versions": {"types": "v-types", "masteries": "v-masteries"},
+            })
+
+    def test_missing_table_raises_and_leaves_no_partial_file(self):
+        index = get_sde_release()
+        index["tables"]["types"]["jsonl"]["url"] = f"{BASE}/{RELEASE}/gone.jsonl"
+
+        with self.assertRaises(httpx2.HTTPStatusError):
+            fetch_sde_release(index, ["types"], self.folder)
+
+        self.assertFalse(os.path.exists(os.path.join(self.folder, "types.jsonl")))

@@ -72,7 +72,7 @@ class UpdateModelsFromSdeTests(TestCase):
 
         plan = {0: "test", 3: "test", 7: "test"}
         with mock.patch.object(celery_tasks, "ESDE_TASK_SPLIT", True), \
-                mock.patch.object(celery_tasks, "get_latest_sde", return_value={"buildNumber": 5}), \
+                mock.patch.object(celery_tasks, "get_sde_target", return_value=(5, {"buildNumber": 5})), \
                 mock.patch.object(celery_tasks, "plan_sde_update", return_value=plan), \
                 mock.patch.object(celery_tasks, "chain", return_value=fake_chain_instance) as mock_chain:
             celery_tasks.update_models_from_sde()
@@ -80,9 +80,9 @@ class UpdateModelsFromSdeTests(TestCase):
         mock_chain.assert_called_once()
         (queue_arg,), _ = mock_chain.call_args
         # fetch_sde of the build + one process_sde_section per planned model + cleanup_sde
-        self.assertEqual(queue_arg[0].args, (5,))
+        self.assertEqual(queue_arg[0].args, (5, [0, 3, 7]))
         self.assertEqual([_t.args for _t in queue_arg[1:-1]], [(0,), (3,), (7,)])
-        self.assertEqual(queue_arg[-1].args, ([0, 3, 7],))
+        self.assertEqual(queue_arg[-1].args, ([0, 3, 7], None))
 
         fake_chain_instance.apply_async.assert_called_once()
         _, apply_kwargs = fake_chain_instance.apply_async.call_args
@@ -92,7 +92,7 @@ class UpdateModelsFromSdeTests(TestCase):
     def test_split_mode_with_nothing_to_load_queues_nothing(self):
         latest = {"buildNumber": 5}
         with mock.patch.object(celery_tasks, "ESDE_TASK_SPLIT", True), \
-                mock.patch.object(celery_tasks, "get_latest_sde", return_value=latest), \
+                mock.patch.object(celery_tasks, "get_sde_target", return_value=(5, latest)), \
                 mock.patch.object(celery_tasks, "plan_sde_update", return_value={}), \
                 mock.patch.object(celery_tasks, "finish_sde_update") as mock_finish, \
                 mock.patch.object(celery_tasks, "chain") as mock_chain:

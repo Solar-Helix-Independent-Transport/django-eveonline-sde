@@ -18,8 +18,10 @@ from django.test import SimpleTestCase, TestCase
 
 # Django EVE SDE
 from eve_sde.models import (
+    EveSDESection,
     FreelanceJobSchema,
     FreelanceJobSchemaParameter,
+    ItemCategory,
     ItemType,
     Mastery,
     Planet,
@@ -204,3 +206,41 @@ class LoadFromRestFolderTests(TestCase):
                 {"celestialID": 40000001, "power": 99},
             ],
         )
+
+
+class SectionStateTests(TestCase):
+    """
+    REST state (release + table versions) on EveSDESection only exists when
+    the last load came from REST, so a later REST run never trusts hashes
+    that don't describe what's in the DB.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
+        EveSDESection.objects.create(
+            sde_section="ItemCategory", build_number=3682781, last_update="2026-11-11T08:39:00Z",
+            total_lines=1, total_rows=1, release="20261111T083900Z", versions={"categories": "abc"},
+        )
+
+    def load(self, rest):
+        folder = os.path.join(self.tmpdir, "rest" if rest else "zip")
+        key = "categoryID" if rest else "_key"
+        write_folder(folder, "categories", [{key: 6, "name": {"en": "Ship"}, "published": True}], rest)
+        ItemCategory.load_from_sde(folder)
+        return EveSDESection.objects.get(sde_section="ItemCategory")
+
+    def test_zip_load_clears_rest_state(self):
+        section = self.load(rest=False)
+
+        self.assertIsNone(section.release)
+        self.assertEqual(section.versions, {})
+        self.assertEqual(section.build_number, 3687575)
+        self.assertEqual(section.total_rows, 1)
+
+    def test_rest_load_leaves_rest_state_alone(self):
+        section = self.load(rest=True)
+
+        self.assertEqual(section.release, "20261111T083900Z")
+        self.assertEqual(section.versions, {"categories": "abc"})
+        self.assertEqual(section.build_number, 3687575)

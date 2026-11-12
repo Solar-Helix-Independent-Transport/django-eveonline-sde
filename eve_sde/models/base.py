@@ -501,17 +501,18 @@ class JSONModel(models.Model):
             logger.exception(f"Failed to read SDE version from {folder_name}/_sde.jsonl")
             raise
 
-        EveSDESection.objects.update_or_create(
-            sde_section=section,
-            defaults={
-                "build_number": build,
-                "last_update": last_update,
-                "total_lines": total_lines,
-                "total_rows": total_rows,
-                "import_fingerprint": cls.import_fingerprint(),
-                "removed_pks": sorted(removed, key=str),
-            }
-        )
+        defaults = {
+            "build_number": build,
+            "last_update": last_update,
+            "total_lines": total_lines,
+            "total_rows": total_rows,
+            "import_fingerprint": cls.import_fingerprint(),
+            "removed_pks": sorted(removed, key=str),
+        }
+        if read_sde_schema(folder_name, cls.Import.filename) is None:
+            # loaded from the zip, any REST release / versions no longer describe these rows
+            defaults |= {"release": None, "versions": {}}
+        EveSDESection.objects.update_or_create(sde_section=section, defaults=defaults)
 
     class Meta:
         abstract = True

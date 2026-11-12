@@ -21,6 +21,8 @@ from eve_sde.models.types import *
 class EveSDE(SingletonModel):
 
     build_number = models.IntegerField(default=None, null=True, blank=True)
+    # REST release loaded (e.g. 20261111T160425Z), None when loaded from the zip
+    release = models.CharField(max_length=32, null=True, blank=True, default=None)
     release_date = models.DateTimeField(default=None, null=True, blank=True)
     last_check_date = models.DateTimeField(auto_now=True)
 

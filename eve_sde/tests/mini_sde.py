@@ -30,7 +30,7 @@ from django.db import connection, models
 # Django EVE SDE
 from eve_sde import sde_tasks
 from eve_sde.models import EveSDE, EveSDESection
-from eve_sde.tests.rest_fakes import BASE, schema, to_rest
+from eve_sde.tests.rest_fakes import BASE, install_fake_http, schema, to_rest
 
 FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_jsons", "mini_sde")
 FIRST_BUILD = 1000
@@ -204,10 +204,7 @@ class SDEUpdateHarness:
             patcher = mock.patch.object(sde_tasks, target, side_effect=side_effect)
             patcher.start()
             self.addCleanup(patcher.stop)
-        for name, side_effect in (("get", self._get), ("stream", self._stream)):
-            patcher = mock.patch.object(sde_tasks.httpx2, name, side_effect=side_effect)
-            patcher.start()
-            self.addCleanup(patcher.stop)
+        install_fake_http(self, self._get, self._stream)
 
     # fake CCP
     def _latest(self):

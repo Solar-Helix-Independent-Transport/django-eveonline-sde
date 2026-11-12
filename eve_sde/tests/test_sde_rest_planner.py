@@ -7,6 +7,8 @@ Without usable _changes, every section whose versions moved reloads.
 Worked examples follow .scratch/sde-rest/spec.md §4.2.
 """
 # Standard Library
+import contextlib
+import io
 import os
 import shutil
 import tempfile
@@ -14,6 +16,7 @@ from datetime import timedelta
 from unittest import mock
 
 # Django
+from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
@@ -237,3 +240,18 @@ class RestUpdateRunTests(RestPlannerTestCase):
 
         self.assertEqual(self.ccp.table_urls(), [])
         self.assertEqual(EveSDE.get_solo().release, RELEASE)
+
+
+class LoadSdePlanCommandTests(RestPlannerTestCase):
+
+    def test_plan_shows_what_the_release_would_load(self):
+        self.settle(Region={"versions": {}})
+        self.serve(changes=[changed("mapRegions", [10000002])])
+        out = io.StringIO()
+
+        with contextlib.redirect_stdout(out):
+            call_command("esde_load_sde", "--plan")
+
+        self.assertIn(f"Release {RELEASE} (build 3687575) - 1/", out.getvalue())
+        self.assertIn("Region: mapRegions changed", out.getvalue())
+        self.assertEqual(self.ccp.table_urls(), ["_changes"])  # nothing downloaded

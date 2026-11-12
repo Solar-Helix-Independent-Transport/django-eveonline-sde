@@ -24,6 +24,18 @@ def schema(table):
         return json.load(f)
 
 
+def install_fake_http(testcase, get, stream):
+    """Route httpx2.get / httpx2.stream, and the same on any httpx2.Client, to `get` / `stream`."""
+    client = mock.MagicMock()
+    client.get.side_effect = get
+    client.stream.side_effect = stream
+    client.__enter__.return_value = client
+    for name, value in (("get", get), ("stream", stream), ("Client", lambda *a, **k: client)):
+        patcher = mock.patch.object(httpx2, name, side_effect=value)
+        patcher.start()
+        testcase.addCleanup(patcher.stop)
+
+
 class FakeCCP:
     """
     sde.evetech.net with one release, RELEASE, serving `tables`
@@ -80,10 +92,7 @@ class FakeCCP:
         return cm
 
     def install(self, testcase):
-        for name in ("get", "stream"):
-            patcher = mock.patch.object(httpx2, name, side_effect=getattr(self, name))
-            patcher.start()
-            testcase.addCleanup(patcher.stop)
+        install_fake_http(testcase, self.get, self.stream)
 
     def table_urls(self):
         """The table and schema URLs asked for, as table names."""

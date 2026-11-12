@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand
 # Django EVE SDE
 from eve_sde.sde_tasks import (
     SDE_PARTS_TO_UPDATE,
-    get_latest_sde,
+    get_sde_target,
     plan_sde_update,
     process_from_sde,
 )
@@ -22,9 +22,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options["plan"]:
-            build = get_latest_sde().get("buildNumber")
-            plan = plan_sde_update(build, full=options["full"])
-            print(f"Build {build} - {len(plan)}/{len(SDE_PARTS_TO_UPDATE)} models to load")
+            target, latest = get_sde_target()
+            plan = plan_sde_update(target, full=options["full"])
+            release = latest.get("release")
+            label = f"Release {release} (build {latest.get('buildNumber')})" if release else f"Build {target}"
+            print(f"{label} - {len(plan)}/{len(SDE_PARTS_TO_UPDATE)} models to load")
             for idx, reason in plan.items():
                 print(f"  {SDE_PARTS_TO_UPDATE[idx].__name__}: {reason}")
             return

@@ -1,0 +1,60 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "unitID",
+    "type": "object",
+    "properties": {
+        "unitID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "description": {
+            "$ref": "#/$defs/Localized"
+        },
+        "displayName": {
+            "$ref": "#/$defs/Localized"
+        },
+        "name": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "unitID",
+        "name"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

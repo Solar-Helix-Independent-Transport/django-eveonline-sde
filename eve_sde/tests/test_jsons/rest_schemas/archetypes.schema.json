@@ -1,0 +1,56 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "archetypeID",
+    "type": "object",
+    "properties": {
+        "archetypeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "description": {
+            "$ref": "#/$defs/Localized"
+        },
+        "title": {
+            "$ref": "#/$defs/Localized"
+        }
+    },
+    "required": [
+        "archetypeID"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

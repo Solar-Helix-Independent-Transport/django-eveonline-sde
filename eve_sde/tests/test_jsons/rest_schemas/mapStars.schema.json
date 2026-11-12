@@ -1,0 +1,67 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "starID",
+    "type": "object",
+    "properties": {
+        "starID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "radius": {
+            "type": "integer",
+            "format": "int64"
+        },
+        "solarSystemID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "statistics": {
+            "$ref": "#/$defs/MapStarsStatistics"
+        },
+        "typeID": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "starID",
+        "radius",
+        "solarSystemID",
+        "typeID"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "MapStarsStatistics": {
+            "type": "object",
+            "properties": {
+                "age": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "life": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "luminosity": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "spectralClass": {
+                    "type": "string"
+                },
+                "temperature": {
+                    "type": "number",
+                    "format": "double"
+                }
+            },
+            "required": [
+                "age",
+                "life",
+                "luminosity",
+                "spectralClass",
+                "temperature"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

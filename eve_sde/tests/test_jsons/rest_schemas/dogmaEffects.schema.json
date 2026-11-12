@@ -1,0 +1,190 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "effectID",
+    "type": "object",
+    "properties": {
+        "effectID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "description": {
+            "$ref": "#/$defs/Localized"
+        },
+        "disallowAutoRepeat": {
+            "type": "boolean"
+        },
+        "dischargeAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "displayName": {
+            "$ref": "#/$defs/Localized"
+        },
+        "distribution": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "durationAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "effectCategoryID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "electronicChance": {
+            "type": "boolean"
+        },
+        "falloffAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "fittingUsageChanceAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "guid": {
+            "type": "string"
+        },
+        "iconID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "isAssistance": {
+            "type": "boolean"
+        },
+        "isOffensive": {
+            "type": "boolean"
+        },
+        "isWarpSafe": {
+            "type": "boolean"
+        },
+        "modifierInfo": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/DogmaEffectsModifierInfo"
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "npcActivationChanceAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "npcUsageChanceAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "propulsionChance": {
+            "type": "boolean"
+        },
+        "published": {
+            "type": "boolean"
+        },
+        "rangeAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "rangeChance": {
+            "type": "boolean"
+        },
+        "resistanceAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "trackingSpeedAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "effectID",
+        "disallowAutoRepeat",
+        "effectCategoryID",
+        "electronicChance",
+        "isAssistance",
+        "isOffensive",
+        "isWarpSafe",
+        "name",
+        "propulsionChance",
+        "published",
+        "rangeChance"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "DogmaEffectsModifierInfo": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string"
+                },
+                "effectID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "func": {
+                    "type": "string"
+                },
+                "groupID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "modifiedAttributeID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "modifyingAttributeID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "operation": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "skillTypeID": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "domain",
+                "func"
+            ],
+            "additionalProperties": false
+        },
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

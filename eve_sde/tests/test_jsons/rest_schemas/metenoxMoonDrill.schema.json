@@ -1,0 +1,27 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "typeID",
+    "type": "object",
+    "properties": {
+        "typeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "miningCycleTime": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "miningEfficiency": {
+            "type": "number",
+            "format": "double"
+        },
+        "reagentsConsumedPerCycle": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "typeID"
+    ],
+    "additionalProperties": false
+}

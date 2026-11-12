@@ -1,0 +1,143 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "typeID",
+    "type": "object",
+    "properties": {
+        "typeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "basePrice": {
+            "type": "number",
+            "format": "double"
+        },
+        "capacity": {
+            "type": "number",
+            "format": "double"
+        },
+        "description": {
+            "$ref": "#/$defs/Localized"
+        },
+        "factionID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "graphicID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "groupID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "iconID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "isDynamicType": {
+            "type": "boolean"
+        },
+        "isRepackable": {
+            "type": "boolean"
+        },
+        "mass": {
+            "type": "number",
+            "format": "double"
+        },
+        "marketGroupID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "metaGroupID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "metaLevel": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "name": {
+            "$ref": "#/$defs/Localized"
+        },
+        "packagedVolume": {
+            "type": "number",
+            "format": "double"
+        },
+        "portionSize": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "published": {
+            "type": "boolean"
+        },
+        "raceID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "radius": {
+            "type": "number",
+            "format": "double"
+        },
+        "shipTreeGroupID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "soundID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "techLevel": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "variationParentTypeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "volume": {
+            "type": "number",
+            "format": "double"
+        }
+    },
+    "required": [
+        "typeID",
+        "groupID",
+        "name"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

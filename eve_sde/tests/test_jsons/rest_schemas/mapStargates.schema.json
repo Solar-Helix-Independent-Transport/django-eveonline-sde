@@ -1,0 +1,76 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "stargateID",
+    "type": "object",
+    "properties": {
+        "stargateID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "destination": {
+            "$ref": "#/$defs/MapStargatesDestination"
+        },
+        "position": {
+            "$ref": "#/$defs/MapStargatesPosition"
+        },
+        "solarSystemID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "typeID": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "stargateID",
+        "destination",
+        "position",
+        "solarSystemID",
+        "typeID"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "MapStargatesDestination": {
+            "type": "object",
+            "properties": {
+                "solarSystemID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "stargateID": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "solarSystemID",
+                "stargateID"
+            ],
+            "additionalProperties": false
+        },
+        "MapStargatesPosition": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "y": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "z": {
+                    "type": "number",
+                    "format": "double"
+                }
+            },
+            "required": [
+                "x",
+                "y",
+                "z"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

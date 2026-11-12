@@ -1,0 +1,93 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "landmarkID",
+    "type": "object",
+    "properties": {
+        "landmarkID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "description": {
+            "$ref": "#/$defs/Localized"
+        },
+        "iconID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "locationID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "name": {
+            "$ref": "#/$defs/Localized"
+        },
+        "position": {
+            "$ref": "#/$defs/LandmarksPosition"
+        }
+    },
+    "required": [
+        "landmarkID",
+        "description",
+        "name",
+        "position"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "LandmarksPosition": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "y": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "z": {
+                    "type": "number",
+                    "format": "double"
+                }
+            },
+            "required": [
+                "x",
+                "y",
+                "z"
+            ],
+            "additionalProperties": false
+        },
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

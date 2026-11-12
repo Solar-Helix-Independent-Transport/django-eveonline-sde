@@ -1,0 +1,192 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "solarSystemID",
+    "type": "object",
+    "properties": {
+        "solarSystemID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "border": {
+            "type": "boolean"
+        },
+        "constellationID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "corridor": {
+            "type": "boolean"
+        },
+        "disallowedAnchorCategories": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "disallowedAnchorGroups": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "factionID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "fringe": {
+            "type": "boolean"
+        },
+        "hub": {
+            "type": "boolean"
+        },
+        "international": {
+            "type": "boolean"
+        },
+        "luminosity": {
+            "type": "number",
+            "format": "double"
+        },
+        "name": {
+            "$ref": "#/$defs/Localized"
+        },
+        "planetIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "position": {
+            "$ref": "#/$defs/MapSolarSystemsPosition"
+        },
+        "position2D": {
+            "$ref": "#/$defs/MapSolarSystemsPosition2D"
+        },
+        "radius": {
+            "type": "number",
+            "format": "double"
+        },
+        "regionID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "regional": {
+            "type": "boolean"
+        },
+        "securityClass": {
+            "type": "string"
+        },
+        "securityStatus": {
+            "type": "number",
+            "format": "double"
+        },
+        "starID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "stargateIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "visualEffect": {
+            "type": "string"
+        },
+        "wormholeClassID": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "solarSystemID",
+        "constellationID",
+        "name",
+        "planetIDs",
+        "position",
+        "radius",
+        "regionID",
+        "securityStatus",
+        "stargateIDs"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        },
+        "MapSolarSystemsPosition": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "y": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "z": {
+                    "type": "number",
+                    "format": "double"
+                }
+            },
+            "required": [
+                "x",
+                "y",
+                "z"
+            ],
+            "additionalProperties": false
+        },
+        "MapSolarSystemsPosition2D": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "y": {
+                    "type": "number",
+                    "format": "double"
+                }
+            },
+            "required": [
+                "x",
+                "y"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

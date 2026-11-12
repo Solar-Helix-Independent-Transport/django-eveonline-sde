@@ -1,0 +1,69 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "roleID",
+    "type": "object",
+    "properties": {
+        "roleID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "description": {
+            "$ref": "#/$defs/Localized"
+        },
+        "name": {
+            "$ref": "#/$defs/Localized"
+        },
+        "roleGroupIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "shortName": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "roleID",
+        "name",
+        "roleGroupIDs",
+        "shortName"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

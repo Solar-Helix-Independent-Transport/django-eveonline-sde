@@ -1,0 +1,96 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "stationID",
+    "type": "object",
+    "properties": {
+        "stationID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "celestialIndex": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "operationID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "orbitID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "orbitIndex": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "ownerID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "position": {
+            "$ref": "#/$defs/Position"
+        },
+        "reprocessingEfficiency": {
+            "type": "number",
+            "format": "double"
+        },
+        "reprocessingHangarFlag": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "reprocessingStationsTake": {
+            "type": "number",
+            "format": "double"
+        },
+        "solarSystemID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "typeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "useOperationName": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "stationID",
+        "operationID",
+        "orbitID",
+        "ownerID",
+        "position",
+        "reprocessingEfficiency",
+        "reprocessingHangarFlag",
+        "reprocessingStationsTake",
+        "solarSystemID",
+        "typeID",
+        "useOperationName"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Position": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "y": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "z": {
+                    "type": "number",
+                    "format": "double"
+                }
+            },
+            "required": [
+                "x",
+                "y",
+                "z"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

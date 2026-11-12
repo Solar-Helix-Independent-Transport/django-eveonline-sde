@@ -1,0 +1,213 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "moonID",
+    "type": "object",
+    "properties": {
+        "moonID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "attributes": {
+            "$ref": "#/$defs/MapMoonsAttributes"
+        },
+        "celestialIndex": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "uniqueName": {
+            "$ref": "#/$defs/Localized"
+        },
+        "npcStationIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "orbitID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "orbitIndex": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "position": {
+            "$ref": "#/$defs/MapMoonsPosition"
+        },
+        "radius": {
+            "type": "number",
+            "format": "double"
+        },
+        "solarSystemID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "statistics": {
+            "$ref": "#/$defs/MapMoonsStatistics"
+        },
+        "typeID": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "moonID",
+        "attributes",
+        "celestialIndex",
+        "orbitID",
+        "orbitIndex",
+        "position",
+        "radius",
+        "solarSystemID",
+        "typeID"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        },
+        "MapMoonsAttributes": {
+            "type": "object",
+            "properties": {
+                "heightMap1": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "heightMap2": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "shaderPreset": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "heightMap1",
+                "heightMap2",
+                "shaderPreset"
+            ],
+            "additionalProperties": false
+        },
+        "MapMoonsPosition": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "y": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "z": {
+                    "type": "number",
+                    "format": "double"
+                }
+            },
+            "required": [
+                "x",
+                "y",
+                "z"
+            ],
+            "additionalProperties": false
+        },
+        "MapMoonsStatistics": {
+            "type": "object",
+            "properties": {
+                "density": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "eccentricity": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "escapeVelocity": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "locked": {
+                    "type": "boolean"
+                },
+                "massDust": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "massGas": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "orbitPeriod": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "orbitRadius": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "pressure": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "rotationRate": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "spectralClass": {
+                    "type": "string"
+                },
+                "surfaceGravity": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "temperature": {
+                    "type": "number",
+                    "format": "double"
+                }
+            },
+            "required": [
+                "density",
+                "eccentricity",
+                "escapeVelocity",
+                "locked",
+                "pressure",
+                "rotationRate",
+                "spectralClass",
+                "temperature"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

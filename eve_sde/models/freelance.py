@@ -194,7 +194,8 @@ class FreelanceJobSchemaParameter(JSONModel):
                     "_key": cls.build_pk(schema_key, p.get("_key")),
                 })
                 _model = cls.map_to_model(merged, name_lookup=name_lookup, pk=True)
-                _model.raw = p
+                # the zip's shape whatever the source: REST names `_key` "key" too
+                _model.raw = {k: v for k, v in p.items() if k != "key"}
                 _out.append(_model)
         return _out
 

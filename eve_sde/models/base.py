@@ -18,7 +18,7 @@ from django.utils.translation import gettext as _
 from eve_sde.app_settings import ESDE_BATCH_SIZE, ESDE_CHUNK_SIZE
 from eve_sde.models.admin import EveSDESection
 from eve_sde.models.utils import get_langs, get_langs_for_field, lang_key, val_from_dict
-from eve_sde.sde_rest import alias_sde_record, read_sde_schema, sde_tables_for
+from eve_sde.sde_rest import alias_sde_record, read_sde_schema, section_versions
 
 logger = logging.getLogger(__name__)
 
@@ -509,17 +509,14 @@ class JSONModel(models.Model):
             "import_fingerprint": cls.import_fingerprint(),
             "removed_pks": sorted(removed, key=str),
         }
-        if read_sde_schema(folder_name, cls.Import.filename) is None:
-            # loaded from the zip, any REST release / versions no longer describe these rows
-            defaults |= {"release": None, "versions": {}}
-        else:
-            # the release and the versions of the tables this model reads, so the
-            # next run can tell whether any of them changed
-            fetched = sde_data.get("versions", {})
-            defaults |= {
-                "release": sde_data.get("release"),
-                "versions": {_t: fetched[_t] for _t in sde_tables_for([cls]) if _t in fetched},
-            }
+        # only a REST folder's _sde.jsonl names its release; from the zip, any
+        # REST release / versions no longer describe these rows. Otherwise the
+        # versions of the tables this model reads, so the next run can tell
+        # whether any of them changed
+        defaults |= {
+            "release": sde_data.get("release"),
+            "versions": section_versions(cls, sde_data.get("versions", {})),
+        }
         EveSDESection.objects.update_or_create(sde_section=section, defaults=defaults)
 
     class Meta:

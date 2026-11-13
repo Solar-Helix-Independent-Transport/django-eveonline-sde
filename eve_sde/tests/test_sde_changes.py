@@ -317,7 +317,7 @@ class ProcessFromSdeSelectiveTests(TestCase):
         models[0].load_from_sde.assert_not_called()
         models[1].load_from_sde.assert_called_once()
         models[2].load_from_sde.assert_not_called()
-        mock_finish.assert_called_once_with({1: "test"})
+        mock_finish.assert_called_once_with({1: "test"}, {"buildNumber": 30})
 
 
 class DownloadPinnedBuildTests(TestCase):

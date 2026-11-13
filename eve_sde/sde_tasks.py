@@ -77,6 +77,7 @@ from eve_sde.sde_rest import (
     fetch_sde_release,
     get_sde_release,
     sde_tables_for,
+    section_versions,
 )
 
 logger = logging.getLogger(__name__)
@@ -506,11 +507,7 @@ def process_from_sde(start_from: int = 0, full: bool = False):
 
         delete_removed_rows()
         # only recorded as the current build if every section above completed
-        if ESDE_SOURCE == "rest":
-            finish_sde_update(plan, latest)
-        else:
-            # the zip's own _sde.jsonl has the release date
-            finish_sde_update(plan)
+        finish_sde_update(plan, latest)
     finally:
         delete_sde_folder()
 
@@ -540,15 +537,14 @@ def finish_sde_update(plan, sde_data: dict = None):
         return
     if sde_data and "tables" in sde_data:
         # a REST release index, the skipped models' tables are current at it
-        for mdl in skipped:
-            EveSDESection.objects.filter(sde_section=mdl.__name__).update(
-                build_number=build,
-                release=sde_data["release"],
-                versions={
-                    _t: sde_data["tables"][_t]["version"]
-                    for _t in sde_tables_for([mdl]) if _t in sde_data["tables"]
-                },
-            )
+        versions = {_t: _i["version"] for _t, _i in sde_data["tables"].items()}
+        models = {_m.__name__: _m for _m in skipped}
+        sections = list(EveSDESection.objects.filter(sde_section__in=models))
+        for section in sections:
+            section.build_number = build
+            section.release = sde_data["release"]
+            section.versions = section_versions(models[section.sde_section], versions)
+        EveSDESection.objects.bulk_update(sections, ["build_number", "release", "versions"])
     else:
         EveSDESection.objects.filter(sde_section__in=[_m.__name__ for _m in skipped]).update(build_number=build)
 

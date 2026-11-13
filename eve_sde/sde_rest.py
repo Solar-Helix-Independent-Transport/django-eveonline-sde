@@ -144,6 +144,11 @@ def sde_tables_for(models) -> list:
     return list(tables)
 
 
+def section_versions(mdl, versions: dict) -> dict:
+    """{table: version} from `versions` for each table `mdl` reads, the ones present."""
+    return {_t: versions[_t] for _t in sde_tables_for([mdl]) if _t in versions}
+
+
 def read_sde_schema(folder: str, filename: str):
     """
     The schema saved next to `filename` (`types.jsonl` -> `types.schema.json`)

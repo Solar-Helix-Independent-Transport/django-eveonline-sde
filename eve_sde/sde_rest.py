@@ -21,6 +21,9 @@ SDE_INFO_FILE = "_sde.jsonl"
 # several at a time make a full fetch over 10x faster (166s -> 14s), close
 # to the time the largest table (mapMoons) takes on its own.
 SDE_FETCH_THREADS = 16
+# CCP serves the API gzipped. Ask for only that: offered brotli, the CDN
+# sends it, and httpx2's brotli decoder breaks on Brotli < 1.2.
+SDE_HEADERS = {"Accept-Encoding": "gzip"}
 
 
 def download_file(url, local_filename, client=None):
@@ -40,7 +43,7 @@ def download_file(url, local_filename, client=None):
     """
     try:
         stream = client.stream if client else httpx2.stream
-        with stream("GET", url, follow_redirects=True) as response:
+        with stream("GET", url, headers=SDE_HEADERS, follow_redirects=True) as response:
             response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
             with open(local_filename, "wb") as f:
                 for chunk in response.iter_bytes():
@@ -62,7 +65,7 @@ def get_sde_release(release: str = "latest") -> dict:
     """
     url = SDE_REST_URL.format(release=release)
     try:
-        response = httpx2.get(url, follow_redirects=True)
+        response = httpx2.get(url, headers=SDE_HEADERS, follow_redirects=True)
         response.raise_for_status()
         return response.json()
     except Exception:

@@ -45,10 +45,10 @@ NOTIFICATIONS_REFRESH_TIME = 30
 NOTIFICATIONS_MAX_PER_USER = 50
 
 
-# Opt-in MySQL/MariaDB backend, used by the SDE load-test workflow to catch
-# column-range/length issues (e.g. INT overflow, VARCHAR truncation) that
-# sqlite doesn't enforce. Off by default so normal unit tests keep using
-# sqlite.
+# Opt-in MySQL/MariaDB backend, used by CI (the test matrix and the SDE
+# load-test workflow) to catch column-range/length issues (e.g. INT overflow,
+# VARCHAR truncation) that sqlite doesn't enforce. Off by default so local
+# runs keep using sqlite.
 if os.environ.get("USE_MYSQL", "False") == "True":
     DATABASES["default"] = {
         "ENGINE": "django.db.backends.mysql",
@@ -60,6 +60,22 @@ if os.environ.get("USE_MYSQL", "False") == "True":
         "OPTIONS": {"charset": "utf8mb4"},
         "TEST": {
             "CHARSET": "utf8mb4",
+            "NAME": "test_tox_allianceauth",
+        },
+    }
+
+# Opt-in PostgreSQL backend. AllianceAuth only officially supports
+# MySQL/MariaDB, so CI runs this as an allowed-to-fail job - it's an early
+# warning for postgres-specific breakage, not a support guarantee.
+if os.environ.get("USE_POSTGRES", "False") == "True":
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("DB_NAME", "tox_allianceauth"),
+        "USER": os.environ.get("DB_USER", "postgres"),
+        "PASSWORD": os.environ.get("DB_PASSWORD", "password"),
+        "HOST": os.environ.get("DB_HOST", ""),
+        "PORT": os.environ.get("DB_PORT", ""),
+        "TEST": {
             "NAME": "test_tox_allianceauth",
         },
     }

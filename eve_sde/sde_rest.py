@@ -81,7 +81,12 @@ def fetch_sde_release(index: dict, tables, folder: str):
     versions = {}
     files = []
     for table in tables:
-        info = index["tables"][table]
+        info = index["tables"].get(table)
+        if info is None:
+            # the planner never loads a model whose own table is gone, so this
+            # is a depends_on table - only used for change detection
+            logger.error(f"SDE table {table} is not in release {index['release']}, skipping it")
+            continue
         files.append((info["jsonl"]["url"], os.path.join(folder, f"{table}.jsonl")))
         files.append((info["jsonl"]["recordSchemaUrl"], os.path.join(folder, f"{table}.schema.json")))
         versions[table] = info["version"]
@@ -122,10 +127,6 @@ def _alias(value, node: dict, schema: dict):
         logger.warning(f"SDE row has no {key} key the schema names, left without _key: {list(value)[:5]}")
     elif key and key in value:
         value.setdefault("_key", value[key])
-        # a zip {_key, _value} pair: the one other property was its _value
-        others = [_p for _p in props if _p != key]
-        if len(others) == 1 and others[0] in value:
-            value.setdefault("_value", value[others[0]])
 
     for name, sub in props.items():
         if name in value:
@@ -159,10 +160,14 @@ def read_sde_schema(folder: str, filename: str):
 
 def alias_sde_record(record: dict, schema: dict) -> dict:
     """
-    `record` with `_key` / `_value` added next to the real names the schema
-    says replaced them, at every depth, so Import configs written against
-    the zip read it unchanged. Nothing is renamed or removed, and a zip row
-    that already has them is left as it is.
+    `record` with `_key` added next to the real name the schema's x-sde-key
+    says replaced it, at every depth, so Import configs written against the
+    zip read it unchanged. Nothing is renamed or removed, and a zip row that
+    already has one is left as it is.
+
+    The zip's `_value` isn't aliased: the schema doesn't say which property
+    replaced it, so the few loaders that read one name both (e.g. Mastery's
+    "levels" / "_value").
     """
     _alias(record, schema, schema)
     return record

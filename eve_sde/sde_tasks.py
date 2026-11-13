@@ -307,10 +307,18 @@ def _plan_rest_update(index: dict, sections: dict, full: bool, stale_before):
     plan = {}
     pending = []  # a table the model reads has a new version
     for idx, mdl in enumerate(SDE_PARTS_TO_UPDATE):
+        if mdl.sde_file_key() not in index["tables"]:
+            # loading would fail on the missing table, this needs a code change
+            logger.error(f"{mdl.__name__} - {mdl.Import.filename} is not in the SDE release, not reloading")
+            continue
         section = sections.get(mdl.__name__)
         reason = _plan_reason(mdl, section, full, stale_before)
         if reason:
             plan[idx] = reason
+            continue
+        if getattr(mdl.Import, "extra_data", False) and section.release != index["release"]:
+            # its outside data may have changed whatever the SDE tables did
+            plan[idx] = "loads extra data from outside the SDE"
             continue
         versions = section.versions or {}
         for table in sde_tables_for([mdl]):

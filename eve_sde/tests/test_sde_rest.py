@@ -73,7 +73,7 @@ class AliasSdeRecordTests(SimpleTestCase):
             {"typeID": 587, "groupID": 25, "mass": 1067000, "_key": 587},
         )
 
-    def test_masteries_get_value_aliases_at_both_levels(self):
+    def test_masteries_get_key_aliases_at_both_levels(self):
         # zip: {"_key": 587, "_value": [{"_key": 0, "_value": [96, 99]}, ...]}
         row = {"typeID": 587, "levels": [
             {"level": 0, "certificateIDs": [96, 99]},
@@ -83,12 +83,18 @@ class AliasSdeRecordTests(SimpleTestCase):
         out = alias_sde_record(row, schema("masteries"))
 
         self.assertEqual(out["_key"], 587)
-        self.assertEqual(
-            [(_l["_key"], _l["_value"]) for _l in out["_value"]],
-            [(0, [96, 99]), (4, [96, 117])],
-        )
-        # the real names are still there
-        self.assertEqual(out["levels"][1]["certificateIDs"], [96, 117])
+        self.assertEqual([_l["_key"] for _l in out["levels"]], [0, 4])
+
+    def test_value_is_never_guessed(self):
+        # the schema doesn't say which property was the zip's _value, so a
+        # {key, one other} row isn't assumed to be a pair
+        masteries = alias_sde_record(
+            {"typeID": 587, "levels": [{"level": 0, "certificateIDs": [96]}]}, schema("masteries"))
+        types = alias_sde_record({"typeID": 587, "groupID": 25}, schema("types"))
+
+        self.assertNotIn("_value", masteries)
+        self.assertNotIn("_value", masteries["levels"][0])
+        self.assertNotIn("_value", types)
 
     def test_freelance_schemas_and_their_parameters_get_key_aliases(self):
         # zip: {"_key": 1, "_value": [{"_key": "BoostShield", "parameters": [{"_key": "solarsystem", ...}]}]}
@@ -103,7 +109,7 @@ class AliasSdeRecordTests(SimpleTestCase):
 
         out = alias_sde_record(row, schema("freelanceJobSchemas"))
 
-        job = out["_value"][0]
+        job = out["schemas"][0]
         self.assertEqual(job["_key"], "BoostShield")
         self.assertEqual([_p["_key"] for _p in job["parameters"]], ["solarsystem", "ship"])
 
@@ -181,6 +187,14 @@ class LoadFromRestFolderTests(TestCase):
             zip_rows=[{"_key": 587, "_value": [{"_key": 0, "_value": [96, 99]}, {"_key": 4, "_value": [117]}]}],
             rest_rows=[{"typeID": 587, "levels": [
                 {"level": 0, "certificateIDs": [96, 99]}, {"level": 4, "certificateIDs": [117]}]}],
+        )
+
+    def test_mastery_level_with_a_new_property_still_loads(self):
+        # CCP adding a field next to certificateIDs mustn't lose the certificates
+        self.assertLoadsTheSame(
+            [Mastery], "masteries",
+            zip_rows=[{"_key": 587, "_value": [{"_key": 0, "_value": [96, 99]}]}],
+            rest_rows=[{"typeID": 587, "levels": [{"level": 0, "certificateIDs": [96, 99], "note": "new"}]}],
         )
 
     def test_freelance_schemas_and_parameters(self):
@@ -334,6 +348,14 @@ class FetchSdeReleaseTests(SimpleTestCase):
                 "releaseDate": "2026-11-11T16:04:25Z",
                 "versions": {"types": "v-types", "masteries": "v-masteries"},
             })
+
+    def test_table_not_in_the_release_is_logged_and_skipped(self):
+        with self.assertLogs("eve_sde", level="ERROR"):
+            fetch_sde_release(get_sde_release(), ["types", "mapPlanets"], self.folder)
+
+        self.assertNotIn("mapPlanets.jsonl", os.listdir(self.folder))
+        with open(os.path.join(self.folder, "_sde.jsonl")) as f:
+            self.assertEqual(json.loads(f.read())["versions"], {"types": "v-types"})
 
     def test_missing_table_raises_and_leaves_no_partial_file(self):
         index = get_sde_release()

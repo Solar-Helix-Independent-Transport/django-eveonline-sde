@@ -57,10 +57,10 @@ class RestPlannerTestCase(TestCase):
                 "versions": {_t: f"v-{_t}" for _t in sde_tables_for([mdl])},
             } | overrides.get(mdl.__name__, {}))
 
-    def serve(self, moved=(), changes=None, compared_with=PREVIOUS):
-        """Publish RELEASE with the tables in `moved` at new versions."""
+    def serve(self, moved=(), changes=None, compared_with=PREVIOUS, dropped=()):
+        """Publish RELEASE with the tables in `moved` at new versions, without those `dropped`."""
         self.ccp = FakeCCP(
-            {_t: [] for _t in ALL_TABLES},
+            {_t: [] for _t in ALL_TABLES if _t not in dropped},
             versions={_t: f"v2-{_t}" for _t in moved},
             changes=changes,
             compared_with=compared_with,
@@ -168,6 +168,54 @@ class ExistingReasonsTests(RestPlannerTestCase):
         self.serve()
 
         self.assertEqual(set(self.plan(full=True).values()), {"full update"})
+
+
+class MissingTableTests(RestPlannerTestCase):
+
+    def test_a_model_whose_own_table_is_gone_is_logged_not_loaded(self):
+        EveSDESection.objects.all().delete()  # never loaded would plan everything
+        self.serve(dropped=["mapPlanets"])
+
+        with self.assertLogs("eve_sde", level="ERROR") as logs:
+            plan = self.plan()
+
+        self.assertNotIn("Planet", plan)
+        self.assertEqual(plan["Region"], "never loaded")
+        self.assertIn("Planet - mapPlanets.jsonl is not in the SDE release", "\n".join(logs.output))
+
+    def test_a_gone_dependency_table_does_not_stop_the_fetch(self):
+        EveSDESection.objects.all().delete()
+        self.serve(dropped=["mapPlanets"])
+        index = sde_tasks.get_sde_release()
+        plan = sde_tasks.plan_sde_update(index)
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
+
+        with mock.patch.object(sde_tasks, "SDE_FOLDER", tmpdir), self.assertLogs("eve_sde", level="ERROR"):
+            sde_tasks.fetch_sde_for_plan(index, plan)  # Moon depends on mapPlanets
+
+        self.assertIn("mapMoons.jsonl", os.listdir(tmpdir))
+        self.assertNotIn("mapPlanets.jsonl", os.listdir(tmpdir))
+
+
+class ExtraDataTests(RestPlannerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        Region.Import.extra_data = (("https://example.com/extra.json", None, ()),)
+        self.addCleanup(delattr, Region.Import, "extra_data")
+
+    def test_reloads_on_every_new_release_whatever_its_tables_did(self):
+        self.settle()
+        self.serve()
+
+        self.assertEqual(self.plan(), {"Region": "loads extra data from outside the SDE"})
+
+    def test_not_reloaded_again_at_the_release_it_loaded(self):
+        self.settle(release=RELEASE)
+        self.serve()
+
+        self.assertEqual(self.plan(), {})
 
 
 class CheckSdeVersionTests(RestPlannerTestCase):

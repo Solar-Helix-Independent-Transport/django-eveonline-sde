@@ -219,8 +219,9 @@ class Mastery(JSONModel):
         _out = []
         _type = {"typeID": json_data.get("_key")}
 
-        for level in json_data.get("_value", []):
-            for certificate_id in level.get("_value", []):
+        # REST names the zip's {_key, _value} pairs
+        for level in json_data.get("levels", json_data.get("_value", [])):
+            for certificate_id in level.get("certificateIDs", level.get("_value", [])):
                 _out.append(
                     cls.map_to_model(
                         {"level": level.get("_key"), "certificateID": certificate_id} | _type,

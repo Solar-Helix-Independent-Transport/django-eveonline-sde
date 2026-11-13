@@ -27,15 +27,16 @@ class RetryConfigTests(TestCase):
             celery_tasks.check_for_sde_updates,
             celery_tasks.update_models_from_sde,
             celery_tasks.fetch_sde,
+            celery_tasks.cleanup_sde,  # re-reads the REST release index
         ):
             self.assertIn(httpx2.HTTPError, task.autoretry_for)
             self.assertEqual(task.max_retries, 5)
             self.assertTrue(task.retry_backoff)
 
     def test_non_network_tasks_do_not_autoretry(self):
-        # process_sde_section/cleanup_sde touch the DB/filesystem, not the
-        # network - a bad row shouldn't be silently retried.
-        for task in (celery_tasks.process_sde_section, celery_tasks.cleanup_sde):
+        # process_sde_section touches the DB/filesystem, not the network - a
+        # bad row shouldn't be silently retried.
+        for task in (celery_tasks.process_sde_section,):
             self.assertFalse(getattr(task, "autoretry_for", ()))
 
 
@@ -125,6 +126,27 @@ class TaskDelegationTests(TestCase):
 
         mock_finish.assert_called_once_with([1, 2])
         mock_delete_folder.assert_called_once()
+
+    def test_cleanup_sde_finishes_a_rest_update_at_the_chains_release(self):
+        with mock.patch.object(celery_tasks, "get_sde_release", return_value={"tables": {}}) as mock_get, \
+                mock.patch.object(celery_tasks, "finish_sde_update") as mock_finish, \
+                mock.patch.object(celery_tasks, "delete_sde_folder"):
+            celery_tasks.cleanup_sde([1, 2], "20261111T160425Z")
+
+        mock_get.assert_called_once_with("20261111T160425Z")
+        mock_finish.assert_called_once_with([1, 2], {"tables": {}})
+
+    def test_cleanup_sde_network_failure_changes_nothing_before_retrying(self):
+        with mock.patch.object(celery_tasks, "get_sde_release", side_effect=httpx2.ConnectError("down")), \
+                mock.patch.object(celery_tasks, "delete_removed_rows") as mock_delete_rows, \
+                mock.patch.object(celery_tasks, "finish_sde_update") as mock_finish, \
+                mock.patch.object(celery_tasks, "delete_sde_folder") as mock_delete_folder:
+            with self.assertRaises(httpx2.ConnectError):
+                celery_tasks.cleanup_sde.run([1, 2], "20261111T160425Z")
+
+        mock_delete_rows.assert_not_called()
+        mock_finish.assert_not_called()
+        mock_delete_folder.assert_not_called()
 
     def test_cleanup_sde_sets_version_then_deletes_folder(self):
         with mock.patch.object(celery_tasks, "set_sde_version") as mock_set_version, \

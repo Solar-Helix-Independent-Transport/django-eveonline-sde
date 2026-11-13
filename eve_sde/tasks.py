@@ -146,15 +146,18 @@ def fetch_sde(self, target=None, plan: list = None):
 @shared_task(
     bind=True,
     base=TaskLockBase,
+    **NETWORK_RETRY_KWARGS,
 )
 def cleanup_sde(self, plan: list = None, release: str = None):
+    # fetched first, so a network failure retries before anything is changed
+    index = get_sde_release(release) if plan is not None and release else None
     delete_removed_rows()
     if plan is None:
         # queued before selective updates, every model was loaded
         set_sde_version()
-    elif release:
+    elif index:
         # the skipped models are current at the release the chain loaded
-        finish_sde_update(plan, get_sde_release(release))
+        finish_sde_update(plan, index)
     else:
         finish_sde_update(plan)
     delete_sde_folder()

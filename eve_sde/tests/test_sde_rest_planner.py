@@ -9,6 +9,7 @@ Worked examples follow .scratch/sde-rest/spec.md §4.2.
 # Standard Library
 import contextlib
 import io
+import json
 import os
 import shutil
 import tempfile
@@ -36,6 +37,12 @@ class RestPlannerTestCase(TestCase):
 
     def setUp(self):
         patcher = mock.patch.object(sde_tasks, "ESDE_SOURCE", "rest")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
+        self.folder = os.path.join(tmpdir, "eve-sde")
+        patcher = mock.patch.object(sde_tasks, "SDE_FOLDER", self.folder)
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -123,11 +130,55 @@ class ChangesTests(RestPlannerTestCase):
         self.assertEqual(self.plan(), {})
 
 
+class HistoryTests(RestPlannerTestCase):
+    """Two releases behind: PREVIOUS's own _changes is still kept, so they merge."""
+
+    OLDER = "20261111T083900Z"
+
+    def serve_previous(self, changes):
+        """Keep PREVIOUS's index, with its _changes compared with OLDER."""
+        url = f"{BASE}/{PREVIOUS}/_changes.jsonl"
+        self.ccp.files[f"{BASE}/{PREVIOUS}/"] = json.dumps({
+            "release": PREVIOUS, "tables": {"_changes": {"version": "c", "jsonl": {"url": url}}},
+        })
+        self.ccp.files[url] = json.dumps({"comparedWith": f"tranquility@{self.OLDER}", "tables": changes}) + "\n"
+
+    def test_changes_from_both_kept_releases_are_merged(self):
+        self.settle(release=self.OLDER)
+        self.serve(moved=["mapRegions", "mapPlanets", "types"], changes=[changed("mapRegions", [1])])
+        self.serve_previous([changed("mapPlanets", [5])])
+
+        plan = self.plan()
+
+        self.assertEqual(plan["Region"], "mapRegions changed")
+        self.assertEqual(plan["Planet"], "mapPlanets changed")
+        self.assertEqual(plan["Moon"], "depends on mapPlanets")
+        self.assertNotIn("ItemType", plan)  # moved, no rows changed in either release
+
+    def test_each_section_gets_only_the_changes_since_its_own_release(self):
+        self.settle(release=self.OLDER, Planet={"release": PREVIOUS})
+        self.serve(moved=["mapPlanets"], changes=[])
+        self.serve_previous([changed("mapPlanets", [5])])
+
+        plan = self.plan()
+
+        self.assertNotIn("Planet", plan)  # the planet change was before PREVIOUS, it has it
+        self.assertEqual(plan["Moon"], "depends on mapPlanets")
+
+    def test_one_release_behind_never_reads_older_history(self):
+        self.settle()
+        self.serve(moved=["mapRegions"], changes=[changed("mapRegions", [1])])
+
+        self.plan()
+
+        self.assertNotIn(f"{BASE}/{PREVIOUS}/", self.ccp.requested)
+
+
 class NoChangesTests(RestPlannerTestCase):
     """More than one release behind, or never loaded from REST: versions decide."""
 
-    def test_sections_whose_versions_moved_reload(self):
-        self.settle(release="20261110T000000Z")
+    def test_sections_from_a_retired_release_reload_when_their_versions_moved(self):
+        self.settle(release="20261110T000000Z")  # PREVIOUS's index is gone too
         self.serve(moved=["mapRegions", "mapPlanets"], changes=[changed("mapRegions", [1])])
 
         plan = self.plan()
@@ -188,14 +239,26 @@ class MissingTableTests(RestPlannerTestCase):
         self.serve(dropped=["mapPlanets"])
         index = sde_tasks.get_sde_release()
         plan = sde_tasks.plan_sde_update(index)
-        tmpdir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
 
-        with mock.patch.object(sde_tasks, "SDE_FOLDER", tmpdir), self.assertLogs("eve_sde", level="ERROR"):
-            sde_tasks.fetch_sde_for_plan(index, plan)  # Moon depends on mapPlanets
+        sde_tasks.fetch_sde_for_plan(index, plan)  # Moon depends on mapPlanets
 
-        self.assertIn("mapMoons.jsonl", os.listdir(tmpdir))
-        self.assertNotIn("mapPlanets.jsonl", os.listdir(tmpdir))
+        self.assertIn("mapMoons.jsonl", os.listdir(self.folder))
+
+
+class FetchForPlanTests(RestPlannerTestCase):
+
+    def test_fetches_only_the_planned_models_own_tables(self):
+        # Moon depends on mapPlanets, mapSolarSystems and types, it only reads mapMoons
+        self.serve()
+        moon = next(_i for _i, _m in enumerate(sde_tasks.SDE_PARTS_TO_UPDATE) if _m.__name__ == "Moon")
+
+        sde_tasks.fetch_sde_for_plan(sde_tasks.get_sde_release(), {moon: "never loaded"})
+
+        self.assertEqual(sorted(os.listdir(self.folder)), ["_sde.jsonl", "mapMoons.jsonl", "mapMoons.schema.json"])
+        with open(os.path.join(self.folder, "_sde.jsonl")) as f:
+            versions = json.loads(f.read())["versions"]
+        for table in sde_tables_for([sde_tasks.SDE_PARTS_TO_UPDATE[moon]]):
+            self.assertEqual(versions[table], f"v-{table}")
 
 
 class ExtraDataTests(RestPlannerTestCase):

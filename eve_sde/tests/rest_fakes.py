@@ -73,6 +73,7 @@ class FakeCCP:
         self.requested.append(url)
         response = mock.MagicMock()
         body = self.files.get(url)
+        response.status_code = 200 if body is not None else 404
         if body is None:
             response.raise_for_status.side_effect = httpx2.HTTPStatusError(
                 "404", request=mock.MagicMock(), response=mock.MagicMock(status_code=404)

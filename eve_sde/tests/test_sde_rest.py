@@ -338,7 +338,7 @@ class FetchSdeReleaseTests(SimpleTestCase):
         for url in self.ccp.requested:
             self.assertTrue(url.startswith(f"{BASE}/{RELEASE}/"), url)
 
-    def test_sde_file_records_the_release_and_fetched_versions(self):
+    def test_sde_file_records_the_release_and_every_table_version(self):
         fetch_sde_release(get_sde_release(), ["types", "masteries"], self.folder)
 
         with open(os.path.join(self.folder, "_sde.jsonl")) as f:
@@ -346,7 +346,8 @@ class FetchSdeReleaseTests(SimpleTestCase):
                 "release": RELEASE,
                 "buildNumber": 3687575,
                 "releaseDate": "2026-11-11T16:04:25Z",
-                "versions": {"types": "v-types", "masteries": "v-masteries"},
+                # groups wasn't fetched, a model depending on it still records its version
+                "versions": {"types": "v-types", "masteries": "v-masteries", "groups": "v-groups"},
             })
 
     def test_table_not_in_the_release_is_logged_and_skipped(self):
@@ -355,7 +356,7 @@ class FetchSdeReleaseTests(SimpleTestCase):
 
         self.assertNotIn("mapPlanets.jsonl", os.listdir(self.folder))
         with open(os.path.join(self.folder, "_sde.jsonl")) as f:
-            self.assertEqual(json.loads(f.read())["versions"], {"types": "v-types"})
+            self.assertNotIn("mapPlanets", json.loads(f.read())["versions"])
 
     def test_missing_table_raises_and_leaves_no_partial_file(self):
         index = get_sde_release()

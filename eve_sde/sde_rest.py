@@ -74,22 +74,20 @@ def fetch_sde_release(index: dict, tables, folder: str):
     """
     Download `tables` and their schemas from the release `index` describes
     into `folder`, plus an _sde.jsonl recording the release and the version
-    of each table fetched. URLs come from the index, so they're pinned to
-    that release even if a newer one lands meanwhile.
+    of every table in it - a model's depends_on tables are only compared by
+    version, so they're never downloaded. URLs come from the index, so
+    they're pinned to that release even if a newer one lands meanwhile.
     """
     os.makedirs(folder, exist_ok=True)
-    versions = {}
     files = []
     for table in tables:
         info = index["tables"].get(table)
         if info is None:
-            # the planner never loads a model whose own table is gone, so this
-            # is a depends_on table - only used for change detection
             logger.error(f"SDE table {table} is not in release {index['release']}, skipping it")
             continue
         files.append((info["jsonl"]["url"], os.path.join(folder, f"{table}.jsonl")))
         files.append((info["jsonl"]["recordSchemaUrl"], os.path.join(folder, f"{table}.schema.json")))
-        versions[table] = info["version"]
+    versions = {_t: _i["version"] for _t, _i in index["tables"].items() if not _t.startswith("_")}
     with httpx2.Client() as client, ThreadPoolExecutor(SDE_FETCH_THREADS) as pool:
         # list() raises the first failed download, after the rest finish
         list(pool.map(lambda _f: download_file(*_f, client=client), files))

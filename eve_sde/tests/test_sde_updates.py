@@ -688,10 +688,11 @@ class RestOnlyTests(SDEUpdateTestCase):
         loaded = self.next_build(rename_tanoo)
 
         self.assertEqual(set(loaded), {"SolarSystem", "Stargate", "Planet", "Moon"})
-        # Moon reads types for the moon type's name
+        # only the planned models' own tables: Moon's depends_on (types for the
+        # moon type's name) is looked up in the DB and compared by version
         self.assertEqual(
             self.rest_tables_downloaded(),
-            ["mapMoons", "mapPlanets", "mapSolarSystems", "mapStargates", "types"],
+            ["mapMoons", "mapPlanets", "mapSolarSystems", "mapStargates"],
         )
         self.assertMatchesFullLoad()
 

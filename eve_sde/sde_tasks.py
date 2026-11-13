@@ -72,6 +72,7 @@ from eve_sde.models.types import (
     TypeListType,
 )
 from eve_sde.sde_rest import (
+    SDE_REST_URL,
     download_file,
     fetch_sde_release,
     get_sde_release,
@@ -303,6 +304,41 @@ def fetch_rest_changes(index: dict):
     return compared, changes
 
 
+def rest_changes_since(index: dict, releases) -> dict:
+    """
+    {release: changes from it up to `index`'s release} for each of `releases`
+    still in CCP's history. Each release's _changes only reaches back one
+    release, so this follows comparedWith back, merging as it goes, until
+    every one is found or the next release back is gone (CCP keeps two).
+    """
+    wanted = set(releases)
+    found = {}
+    merged = {}
+    current = index
+    while wanted - found.keys():
+        compared, changes = fetch_rest_changes(current)
+        if changes is None:
+            break
+        for table, change in changes.items():
+            _c = merged.setdefault(table, {"ops": set(), "ids": set()})
+            _c["ops"] |= change["ops"]
+            _c["ids"] |= change["ids"]
+        found[compared] = {_t: {"ops": set(_c["ops"]), "ids": set(_c["ids"])} for _t, _c in merged.items()}
+        if not wanted - found.keys():
+            break
+        try:
+            response = httpx2.get(SDE_REST_URL.format(release=compared), follow_redirects=True)
+            if response.status_code == 404:
+                # retired, anything older reloads without row-level history
+                break
+            response.raise_for_status()
+            current = response.json()
+        except Exception:
+            logger.warning(f"SDE changes - failed to read release {compared}", exc_info=True)
+            break
+    return {_r: _c for _r, _c in found.items() if _r in wanted}
+
+
 def _plan_rest_update(index: dict, sections: dict, full: bool, stale_before):
     plan = {}
     pending = []  # a table the model reads has a new version
@@ -327,11 +363,13 @@ def _plan_rest_update(index: dict, sections: dict, full: bool, stale_before):
                 break
 
     if pending:
-        # _changes only reaches back one release, older sections reload
-        compared, changes = fetch_rest_changes(index)
+        # sections loaded from a release CCP no longer keeps (or from the zip) reload
+        since = {sections[SDE_PARTS_TO_UPDATE[_i].__name__].release for _i in pending}
+        history = rest_changes_since(index, since - {None, index["release"]})
         for idx in pending:
             mdl = SDE_PARTS_TO_UPDATE[idx]
-            if changes is None or sections[mdl.__name__].release != compared:
+            changes = history.get(sections[mdl.__name__].release)
+            if changes is None:
                 plan[idx] = "no row-level history"
                 continue
             reason = mdl.change_reason(changes)
@@ -409,12 +447,13 @@ def process_section_of_sde(id: int = 0):
 
 def fetch_sde_for_plan(target, plan: dict):
     """
-    Put what `plan` loads in SDE_FOLDER: the tables it reads from the REST
-    release `target` is the index of, or the whole zip of build `target`.
+    Put what `plan` loads in SDE_FOLDER: each planned model's own table from
+    the REST release `target` is the index of, or the whole zip of build
+    `target`.
     """
     if ESDE_SOURCE == "rest":
-        models = [SDE_PARTS_TO_UPDATE[_i] for _i in plan]
-        fetch_sde_release(target, sde_tables_for(models), SDE_FOLDER)
+        tables = dict.fromkeys(SDE_PARTS_TO_UPDATE[_i].sde_file_key() for _i in plan)
+        fetch_sde_release(target, list(tables), SDE_FOLDER)
     else:
         download_extract_sde(target)
 

@@ -67,7 +67,7 @@ if os.environ.get("USE_MYSQL", "False") == "True":
 # Opt-in PostgreSQL backend. AllianceAuth only officially supports
 # MySQL/MariaDB, so CI runs this as an allowed-to-fail job - it's an early
 # warning for postgres-specific breakage, not a support guarantee.
-if os.environ.get("USE_POSTGRES", "False") == "True":
+elif os.environ.get("USE_POSTGRES", "False") == "True":
     DATABASES["default"] = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.environ.get("DB_NAME", "tox_allianceauth"),

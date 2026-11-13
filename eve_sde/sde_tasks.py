@@ -72,7 +72,6 @@ from eve_sde.models.types import (
     TypeListType,
 )
 from eve_sde.sde_rest import (
-    SDE_HEADERS,
     download_file,
     fetch_sde_release,
     get_sde_release,
@@ -279,7 +278,7 @@ def fetch_rest_changes(index: dict):
     """
     try:
         url = index["tables"]["_changes"]["jsonl"]["url"]
-        response = httpx2.get(url, headers=SDE_HEADERS, follow_redirects=True)
+        response = httpx2.get(url, follow_redirects=True)
         response.raise_for_status()
         record = json.loads(next(_l for _l in response.text.splitlines() if _l.strip()))
         compared = record["comparedWith"].split("@", 1)[1]

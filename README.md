@@ -109,14 +109,14 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
 
 - `python manage.py esde_load_sde`
 
-- Add a periodic task to check for SDE updates, which tend to happen after downtime.
+- Add a periodic task to check for SDE updates. They usually land after downtime, but CCP can release one at any time. The check is cheap: it sends the ETag of the last SDE API response (kept in Django's cache), so an unchanged SDE costs one small `304 Not Modified` request.
 
   ```python
   if "eve_sde" in INSTALLED_APPS:
-      # Run at 12:00 UTC each day
+      # Run at half past every hour
       CELERYBEAT_SCHEDULE["EVE SDE :: Check for SDE Updates"] = {
           "task": "eve_sde.tasks.check_for_sde_updates",
-          "schedule": crontab(minute="0", hour="12"),
+          "schedule": crontab(minute="30"),
       }
   ```
 

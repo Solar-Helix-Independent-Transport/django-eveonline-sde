@@ -12,12 +12,14 @@ import json
 import os
 import shutil
 import tempfile
+from unittest import mock
 
 # Third Party
 import httpx2
 
 # Django
-from django.test import SimpleTestCase, TestCase
+from django.core.cache import cache
+from django.test import SimpleTestCase, TestCase, override_settings
 
 # Django EVE SDE
 from eve_sde.models import (
@@ -35,8 +37,10 @@ from eve_sde.models import (
     TypeListType,
 )
 from eve_sde.sde_rest import (
+    ETAG_CACHE_PREFIX,
     alias_sde_record,
     fetch_sde_release,
+    get_json_conditional,
     get_sde_release,
     sde_tables_for,
 )
@@ -366,3 +370,55 @@ class FetchSdeReleaseTests(SimpleTestCase):
             fetch_sde_release(index, ["types"], self.folder)
 
         self.assertFalse(os.path.exists(os.path.join(self.folder, "types.jsonl")))
+
+
+@override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+class ConditionalGetTests(SimpleTestCase):
+    """Version checks send the last ETag and reuse the cached body on a 304."""
+    URL = "https://example.test/latest.jsonl"
+
+    def setUp(self):
+        cache.clear()
+
+    def response(self, status=200, body=None, etag=None):
+        response = mock.MagicMock(status_code=status, headers={"etag": etag} if etag else {})
+        response.json.return_value = body
+        return response
+
+    def test_first_get_has_no_etag_and_caches_the_body(self):
+        with mock.patch.object(httpx2, "get", return_value=self.response(body={"v": 1}, etag='"a"')) as get:
+            self.assertEqual(get_json_conditional(self.URL), {"v": 1})
+
+        self.assertEqual(get.call_args.kwargs["headers"], {})
+        self.assertEqual(cache.get(f"{ETAG_CACHE_PREFIX}{self.URL}"), {"etag": '"a"', "data": {"v": 1}})
+
+    def test_not_modified_returns_the_cached_body(self):
+        cache.set(f"{ETAG_CACHE_PREFIX}{self.URL}", {"etag": '"a"', "data": {"v": 1}})
+
+        with mock.patch.object(httpx2, "get", return_value=self.response(status=304)) as get:
+            self.assertEqual(get_json_conditional(self.URL), {"v": 1})
+
+        self.assertEqual(get.call_args.kwargs["headers"], {"If-None-Match": '"a"'})
+
+    def test_changed_file_replaces_the_cached_body(self):
+        cache.set(f"{ETAG_CACHE_PREFIX}{self.URL}", {"etag": '"a"', "data": {"v": 1}})
+
+        with mock.patch.object(httpx2, "get", return_value=self.response(body={"v": 2}, etag='"b"')):
+            self.assertEqual(get_json_conditional(self.URL), {"v": 2})
+
+        self.assertEqual(cache.get(f"{ETAG_CACHE_PREFIX}{self.URL}"), {"etag": '"b"', "data": {"v": 2}})
+
+    def test_no_etag_is_not_cached(self):
+        with mock.patch.object(httpx2, "get", return_value=self.response(body={"v": 1})):
+            get_json_conditional(self.URL)
+
+        self.assertIsNone(cache.get(f"{ETAG_CACHE_PREFIX}{self.URL}"))
+
+    def test_broken_cache_falls_back_to_a_plain_get(self):
+        with mock.patch("eve_sde.sde_rest.cache") as broken, \
+                mock.patch.object(httpx2, "get", return_value=self.response(body={"v": 1}, etag='"a"')) as get:
+            broken.get.side_effect = RuntimeError("redis down")
+            broken.set.side_effect = RuntimeError("redis down")
+            self.assertEqual(get_json_conditional(self.URL), {"v": 1})
+
+        self.assertEqual(get.call_args.kwargs["headers"], {})

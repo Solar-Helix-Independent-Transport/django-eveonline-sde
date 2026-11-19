@@ -12,7 +12,14 @@ from concurrent.futures import ThreadPoolExecutor
 # Third Party
 import httpx2
 
+# Django
+from django.core.cache import cache
+
 logger = logging.getLogger(__name__)
+
+# ETag + body of the last version check response, per URL
+ETAG_CACHE_PREFIX = "eve_sde:etag:"
+ETAG_CACHE_TIMEOUT = 60 * 60 * 24 * 7
 
 SDE_REST_URL = "https://sde.evetech.net/tranquility/{release}/"
 SDE_INFO_FILE = "_sde.jsonl"
@@ -53,6 +60,45 @@ def download_file(url, local_filename, client=None):
         raise
 
 
+def _cache_get(key):
+    try:
+        return cache.get(key)
+    except Exception:
+        logger.warning(f"Failed to read {key} from the cache", exc_info=True)
+        return None
+
+
+def _cache_set(key, value):
+    try:
+        cache.set(key, value, ETAG_CACHE_TIMEOUT)
+    except Exception:
+        logger.warning(f"Failed to write {key} to the cache", exc_info=True)
+
+
+def get_json_conditional(url: str):
+    """
+    GET `url` as JSON, sending the ETag of the last response so an unchanged
+    file comes back as a bodyless 304 and is served from the cache. Used for
+    the `latest` release index, which the update check polls hourly, so an
+    unchanged SDE doesn't re-download the ~90KB index each time. `latest`
+    redirects to the current release, so its ETag changes exactly when the
+    release does. The cache is only an optimisation: missing or broken, it's
+    a normal GET.
+    """
+    key = f"{ETAG_CACHE_PREFIX}{url}"
+    cached = _cache_get(key)
+    headers = {"If-None-Match": cached["etag"]} if cached else {}
+    response = httpx2.get(url, headers=headers, follow_redirects=True)
+    if cached and response.status_code == 304:
+        return cached["data"]
+    response.raise_for_status()
+    data = response.json()
+    etag = response.headers.get("etag")
+    if isinstance(etag, str) and etag:
+        _cache_set(key, {"etag": etag, "data": data})
+    return data
+
+
 def get_sde_release(release: str = "latest") -> dict:
     """
     The index of a release (`latest` follows the redirect to the current one).
@@ -62,6 +108,10 @@ def get_sde_release(release: str = "latest") -> dict:
     """
     url = SDE_REST_URL.format(release=release)
     try:
+        if release == "latest":
+            # polled hourly by the update check, and unchanged most of the time
+            return get_json_conditional(url)
+        # a pinned release's index never changes
         response = httpx2.get(url, follow_redirects=True)
         response.raise_for_status()
         return response.json()

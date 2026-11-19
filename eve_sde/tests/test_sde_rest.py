@@ -23,10 +23,12 @@ from django.test import SimpleTestCase, TestCase, override_settings
 
 # Django EVE SDE
 from eve_sde.models import (
+    Certificate,
     EveSDESection,
     FreelanceJobSchema,
     FreelanceJobSchemaParameter,
     ItemCategory,
+    ItemGroup,
     ItemType,
     Mastery,
     Moon,
@@ -173,6 +175,8 @@ class LoadFromRestFolderTests(TestCase):
         self.assertEqual(from_rest, from_zip)
 
     def test_item_type(self):
+        # MySQL checks foreign keys on insert, not at commit like sqlite / postgres
+        ItemGroup.objects.create(id=25)
         self.assertLoadsTheSame(
             [ItemType], "types",
             zip_rows=[{
@@ -186,6 +190,9 @@ class LoadFromRestFolderTests(TestCase):
         )
 
     def test_mastery(self):
+        ItemType.objects.create(id=587)
+        for certificate_id in (96, 99, 117):
+            Certificate.objects.create(id=certificate_id)
         self.assertLoadsTheSame(
             [Mastery], "masteries",
             zip_rows=[{"_key": 587, "_value": [{"_key": 0, "_value": [96, 99]}, {"_key": 4, "_value": [117]}]}],
@@ -195,6 +202,9 @@ class LoadFromRestFolderTests(TestCase):
 
     def test_mastery_level_with_a_new_property_still_loads(self):
         # CCP adding a field next to certificateIDs mustn't lose the certificates
+        ItemType.objects.create(id=587)
+        for certificate_id in (96, 99):
+            Certificate.objects.create(id=certificate_id)
         self.assertLoadsTheSame(
             [Mastery], "masteries",
             zip_rows=[{"_key": 587, "_value": [{"_key": 0, "_value": [96, 99]}]}],
@@ -339,8 +349,33 @@ class FetchSdeReleaseTests(SimpleTestCase):
         ])
         with open(os.path.join(self.folder, "types.jsonl")) as f:
             self.assertEqual(json.loads(f.readline()), {"typeID": 587, "groupID": 25})
-        for url in self.ccp.requested:
-            self.assertTrue(url.startswith(f"{BASE}/{RELEASE}/"), url)
+        self.assertEqual(self.ccp.table_urls(), ["masteries", "types"])
+
+    def test_downloads_straight_from_the_blobs_the_versions_name(self):
+        # the release URLs only 302 to these, so they're never asked for
+        index = get_sde_release()
+        self.ccp.requested.clear()
+
+        fetch_sde_release(index, ["types", "masteries"], self.folder)
+
+        self.assertEqual(sorted(self.ccp.requested), [
+            "https://sde.evetech.net/blobs/v-masteries.jsonl",
+            "https://sde.evetech.net/blobs/v-masteries.schema.json",
+            "https://sde.evetech.net/blobs/v-types.jsonl",
+            "https://sde.evetech.net/blobs/v-types.schema.json",
+        ])
+
+    def test_falls_back_to_the_release_urls_without_blobs(self):
+        index = get_sde_release()
+        self.ccp.blobs.clear()
+
+        with self.assertLogs("eve_sde", level="WARNING") as logs:
+            fetch_sde_release(index, ["types"], self.folder)
+
+        with open(os.path.join(self.folder, "types.jsonl")) as f:
+            self.assertEqual(json.loads(f.readline()), {"typeID": 587, "groupID": 25})
+        self.assertIn(f"{BASE}/{RELEASE}/types.jsonl", self.ccp.requested)
+        self.assertTrue(all(_r.levelname == "WARNING" for _r in logs.records), logs.output)
 
     def test_sde_file_records_the_release_and_every_table_version(self):
         fetch_sde_release(get_sde_release(), ["types", "masteries"], self.folder)
@@ -364,6 +399,7 @@ class FetchSdeReleaseTests(SimpleTestCase):
 
     def test_missing_table_raises_and_leaves_no_partial_file(self):
         index = get_sde_release()
+        self.ccp.blobs.clear()
         index["tables"]["types"]["jsonl"]["url"] = f"{BASE}/{RELEASE}/gone.jsonl"
 
         with self.assertRaises(httpx2.HTTPStatusError):

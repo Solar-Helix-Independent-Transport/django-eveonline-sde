@@ -178,11 +178,12 @@ class ResolveTaskLockBaseTests(TestCase):
     the same graceful=True behavior rather than crashing.
     """
 
-    def test_resolves_the_configured_default(self):
-        # Alliance Auth
-        from allianceauth.services.tasks import QueueOnce as AllianceAuthQueueOnce
+    def test_resolves_the_configured_path(self):
+        # Third Party
+        from celery_once import QueueOnce as UpstreamQueueOnce
 
-        self.assertIs(celery_tasks._resolve_task_lock_base(), AllianceAuthQueueOnce)
+        with mock.patch.object(celery_tasks, "ESDE_CELERY_TASK_BASE", "celery_once.QueueOnce"):
+            self.assertIs(celery_tasks._resolve_task_lock_base(), UpstreamQueueOnce)
 
     def test_falls_back_to_celery_once_when_the_configured_path_is_unimportable(self):
         # Third Party

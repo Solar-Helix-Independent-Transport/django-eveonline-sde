@@ -22,15 +22,40 @@ ETAG_CACHE_PREFIX = "eve_sde:etag:"
 ETAG_CACHE_TIMEOUT = 60 * 60 * 24 * 7
 
 SDE_REST_URL = "https://sde.evetech.net/tranquility/{release}/"
+# Every table file URL in a release index 302s to its immutable blob, named
+# by the table's version hash, e.g. tranquility/<release>/types.jsonl ->
+# /blobs/<types version>.jsonl (and .schema.json for its schema). Going
+# straight to the blob skips a round trip per file. Undocumented, so the
+# index URL is the fallback if a blob URL ever stops working.
+SDE_BLOB_URL = "https://sde.evetech.net/blobs/{version}{ext}"
 SDE_INFO_FILE = "_sde.jsonl"
-# Files downloaded at once. Each one is a redirect to its blob on the CDN,
-# which is most of the time a small table takes, so a shared client and
-# several at a time make a full fetch over 10x faster (166s -> 14s), close
-# to the time the largest table (mapMoons) takes on its own.
+# Files downloaded at once. Most of the time a small table takes is the
+# round trip, so a shared client and several at a time make a full fetch
+# over 10x faster (166s -> 14s), close to the time the largest table
+# (mapMoons) takes on its own.
 SDE_FETCH_THREADS = 16
 
 
-def download_file(url, local_filename, client=None):
+def sde_file_urls(info: dict, schema: bool = False) -> tuple:
+    """
+    (blob URL, index URL) of a table's JSONL, or its schema, from the
+    table's entry in a release index.
+    """
+    if schema:
+        return SDE_BLOB_URL.format(version=info["version"], ext=".schema.json"), info["jsonl"]["recordSchemaUrl"]
+    return SDE_BLOB_URL.format(version=info["version"], ext=".jsonl"), info["jsonl"]["url"]
+
+
+def _stream_to_file(url, local_filename, client=None):
+    stream = client.stream if client else httpx2.stream
+    with stream("GET", url, follow_redirects=True) as response:
+        response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
+        with open(local_filename, "wb") as f:
+            for chunk in response.iter_bytes():
+                f.write(chunk)
+
+
+def download_file(url, local_filename, client=None, fallback_url=None):
     """
     Downloads a file from a given URL using httpx2 and saves it locally.
 
@@ -39,6 +64,8 @@ def download_file(url, local_filename, client=None):
         local_filename (str): The path and name to save the downloaded file.
         client (httpx2.Client): Reuse this client's connections, a new
             connection is opened otherwise.
+        fallback_url (str): Tried, with a warning, if `url` answers with an
+            HTTP error status.
 
     Raises:
         Exception: Re-raises any download failure after logging it, and removes
@@ -46,12 +73,14 @@ def download_file(url, local_filename, client=None):
             local file mistaken for a good one.
     """
     try:
-        stream = client.stream if client else httpx2.stream
-        with stream("GET", url, follow_redirects=True) as response:
-            response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
-            with open(local_filename, "wb") as f:
-                for chunk in response.iter_bytes():
-                    f.write(chunk)
+        try:
+            _stream_to_file(url, local_filename, client)
+        except httpx2.HTTPStatusError as e:
+            if not fallback_url:
+                raise
+            logger.warning(f"Failed to download {url} ({e.response.status_code}), trying {fallback_url}")
+            url = fallback_url
+            _stream_to_file(url, local_filename, client)
         logger.info(f"File downloaded successfully to: {local_filename}")
     except Exception:
         logger.exception(f"Failed to download {url}")
@@ -125,8 +154,9 @@ def fetch_sde_release(index: dict, tables, folder: str):
     Download `tables` and their schemas from the release `index` describes
     into `folder`, plus an _sde.jsonl recording the release and the version
     of every table in it - a model's depends_on tables are only compared by
-    version, so they're never downloaded. URLs come from the index, so
-    they're pinned to that release even if a newer one lands meanwhile.
+    version, so they're never downloaded. Files are fetched by the versions
+    in the index, so they're pinned to that release even if a newer one
+    lands meanwhile.
     """
     os.makedirs(folder, exist_ok=True)
     files = []
@@ -135,12 +165,14 @@ def fetch_sde_release(index: dict, tables, folder: str):
         if info is None:
             logger.error(f"SDE table {table} is not in release {index['release']}, skipping it")
             continue
-        files.append((info["jsonl"]["url"], os.path.join(folder, f"{table}.jsonl")))
-        files.append((info["jsonl"]["recordSchemaUrl"], os.path.join(folder, f"{table}.schema.json")))
+        files.append((*sde_file_urls(info), os.path.join(folder, f"{table}.jsonl")))
+        files.append((*sde_file_urls(info, schema=True), os.path.join(folder, f"{table}.schema.json")))
     versions = {_t: _i["version"] for _t, _i in index["tables"].items() if not _t.startswith("_")}
     with httpx2.Client() as client, ThreadPoolExecutor(SDE_FETCH_THREADS) as pool:
         # list() raises the first failed download, after the rest finish
-        list(pool.map(lambda _f: download_file(*_f, client=client), files))
+        list(pool.map(
+            lambda _f: download_file(_f[0], _f[2], client=client, fallback_url=_f[1]), files,
+        ))
     with open(os.path.join(folder, SDE_INFO_FILE), "w") as f:
         f.write(json.dumps({
             "release": index["release"],

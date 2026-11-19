@@ -1,10 +1,7 @@
 # Django
-from django.urls import include, path
-
-# Alliance Auth
-from allianceauth import urls
+from django.contrib import admin
+from django.urls import path
 
 urlpatterns = [
-    # Alliance Auth URLs
-    path("", include(urls)),
+    path("admin/", admin.site.urls),
 ]

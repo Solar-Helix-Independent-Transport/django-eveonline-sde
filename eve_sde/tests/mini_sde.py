@@ -30,6 +30,7 @@ from django.db import connection, models
 # Django EVE SDE
 from eve_sde import sde_tasks
 from eve_sde.models import EveSDE, EveSDESection
+from eve_sde.sde_rest import sde_file_urls
 from eve_sde.tests.rest_fakes import BASE, install_fake_http, schema, to_rest
 
 FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_jsons", "mini_sde")
@@ -166,6 +167,7 @@ class SDEUpdateHarness:
         self.loaded = []  # model names per update run
         self.plan_hook = None  # optional fn(plan) -> plan, lets a test break the planner
         self.rest_files = {}  # url: body
+        self.rest_blobs = {}  # blob url: the release url it's the file of
         self._rest_sde = {}  # release name: sde
         self._republished = 0
         self.rest_releases = []  # release names, oldest first
@@ -215,6 +217,7 @@ class SDEUpdateHarness:
 
     def _get(self, url, **kwargs):
         self.requested.append(url)
+        url = self.rest_blobs.get(url, url)
         if url.startswith(BASE):
             body = self.rest_files.get(url, 404)
         else:
@@ -239,7 +242,8 @@ class SDEUpdateHarness:
     def rest_tables_downloaded(self):
         """Table names whose .jsonl was downloaded from a REST release."""
         return sorted({
-            _u.rsplit("/", 1)[1].removesuffix(".jsonl") for _u in self.requested
+            _u.rsplit("/", 1)[1].removesuffix(".jsonl")
+            for _u in map(lambda _u: self.rest_blobs.get(_u, _u), self.requested)
             if _u.startswith(BASE) and _u.endswith(".jsonl") and not _u.endswith("/_changes.jsonl")
         })
 
@@ -257,9 +261,12 @@ class SDEUpdateHarness:
             }
             self.rest_files[f"{root}{table}.jsonl"] = body
             self.rest_files[f"{root}{table}.schema.json"] = json.dumps(schema(table))
+            self.rest_blobs[sde_file_urls(index["tables"][table])[0]] = f"{root}{table}.jsonl"
+            self.rest_blobs[sde_file_urls(index["tables"][table], schema=True)[0]] = f"{root}{table}.schema.json"
         previous = self.rest_releases[-1] if self.rest_releases else None
         changes = diff_sde(self._rest_sde[previous], sde) if previous else {}
         index["tables"]["_changes"] = {"version": name, "jsonl": {"url": f"{root}_changes.jsonl"}}
+        self.rest_blobs[sde_file_urls(index["tables"]["_changes"])[0]] = f"{root}_changes.jsonl"
         self.rest_files[f"{root}_changes.jsonl"] = json.dumps({
             "comparedWith": f"tranquility@{previous}", "tables": diff_to_rest_changes(changes),
         }) + "\n"

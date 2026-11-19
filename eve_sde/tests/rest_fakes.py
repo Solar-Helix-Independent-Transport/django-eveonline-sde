@@ -12,6 +12,9 @@ from unittest import mock
 # Third Party
 import httpx2
 
+# Django EVE SDE
+from eve_sde.sde_rest import sde_file_urls
+
 SCHEMAS = os.path.join(os.path.dirname(__file__), "test_jsons", "rest_schemas")
 RELEASE = "20261111T160425Z"
 PREVIOUS = "20261111T110708Z"
@@ -41,13 +44,16 @@ class FakeCCP:
     sde.evetech.net with one release, RELEASE, serving `tables`
     ({table: [rows]}). Table versions are "v-<table>" unless given in
     `versions`. `changes` (a list of CCP's per-table change records) is
-    served as _changes compared with `compared_with`. Any other URL is a
+    served as _changes compared with `compared_with`. Each file is also
+    served at its blob URL, like CCP's (`blobs` maps those to the release URL
+    they stand for - clear it for a CDN without them). Any other URL is a
     404. Every URL asked for is recorded in `requested`.
     """
 
     def __init__(self, tables, versions=None, changes=None, compared_with=PREVIOUS):
         self.requested = []
         self.files = {}
+        self.blobs = {}
         versions = versions or {}
         index = {"release": RELEASE, "buildNumber": 3687575, "releaseDate": "2026-11-11T16:04:25Z", "tables": {}}
 
@@ -58,8 +64,10 @@ class FakeCCP:
                 "jsonl": {"url": f"{url}.jsonl", "recordSchemaUrl": f"{url}.schema.json"},
             }
             self.files[f"{url}.jsonl"] = body
+            self.blobs[sde_file_urls(index["tables"][table])[0]] = f"{url}.jsonl"
             if with_schema:
                 self.files[f"{url}.schema.json"] = json.dumps(schema(table))
+                self.blobs[sde_file_urls(index["tables"][table], schema=True)[0]] = f"{url}.schema.json"
 
         for table, rows in tables.items():
             publish(table, "".join(json.dumps(_r) + "\n" for _r in rows))
@@ -72,7 +80,7 @@ class FakeCCP:
     def _response(self, url):
         self.requested.append(url)
         response = mock.MagicMock()
-        body = self.files.get(url)
+        body = self.files.get(self.blobs.get(url, url))
         response.status_code = 200 if body is not None else 404
         if body is None:
             response.raise_for_status.side_effect = httpx2.HTTPStatusError(
@@ -100,7 +108,8 @@ class FakeCCP:
         prefix = f"{BASE}/{RELEASE}/"
         return sorted({
             _u.removeprefix(prefix).removesuffix(".jsonl").removesuffix(".schema.json")
-            for _u in self.requested if _u.startswith(prefix) and _u != prefix
+            for _u in map(lambda _u: self.blobs.get(_u, _u), self.requested)
+            if _u.startswith(prefix) and _u != prefix
         })
 
 

@@ -82,6 +82,50 @@ class DownloadFileTests(TestCase):
 
         self.assertFalse(os.path.exists(self.target))
 
+    def test_http_status_error_tries_the_fallback(self):
+        missing = mock.MagicMock()
+        missing.raise_for_status.side_effect = sde_tasks.httpx2.HTTPStatusError(
+            "not found", request=mock.MagicMock(), response=mock.MagicMock(status_code=404)
+        )
+        found = mock.MagicMock()
+        found.iter_bytes.return_value = [b"abc"]
+        responses = {"http://example.test/blob": missing, "http://example.test/file": found}
+
+        with mock.patch.object(
+            sde_tasks.httpx2, "stream", side_effect=lambda _m, url, **_k: self._stream_context(responses[url]),
+        ):
+            with self.assertLogs("eve_sde", level="WARNING"):
+                sde_tasks.download_file(
+                    "http://example.test/blob", self.target, fallback_url="http://example.test/file",
+                )
+
+        with open(self.target, "rb") as f:
+            self.assertEqual(f.read(), b"abc")
+
+    def test_fallback_failing_too_removes_partial_file_and_raises(self):
+        missing = mock.MagicMock()
+        missing.raise_for_status.side_effect = sde_tasks.httpx2.HTTPStatusError(
+            "not found", request=mock.MagicMock(), response=mock.MagicMock(status_code=404)
+        )
+
+        with mock.patch.object(sde_tasks.httpx2, "stream", return_value=self._stream_context(missing)):
+            with self.assertRaises(sde_tasks.httpx2.HTTPStatusError):
+                sde_tasks.download_file(
+                    "http://example.test/blob", self.target, fallback_url="http://example.test/file",
+                )
+
+        self.assertFalse(os.path.exists(self.target))
+
+    def test_connection_errors_do_not_fall_back(self):
+        # only an HTTP status means the blob URL itself is wrong
+        with mock.patch.object(sde_tasks.httpx2, "stream", side_effect=RuntimeError("connection dropped")) as stream:
+            with self.assertRaises(RuntimeError):
+                sde_tasks.download_file(
+                    "http://example.test/blob", self.target, fallback_url="http://example.test/file",
+                )
+
+        self.assertEqual(stream.call_count, 1)
+
 
 @mock.patch.object(sde_tasks, "ESDE_SOURCE", "zip")
 class CheckSdeVersionTests(TestCase):

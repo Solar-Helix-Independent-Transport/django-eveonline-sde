@@ -54,7 +54,7 @@ jobs:
   # Run Test Coverage
   test-coverage:
     needs: [ pre-commit ]
-    name: AA Latest (Python ${{ matrix.python-version }} with ${{ matrix.database.distribution }} ${{ matrix.database.version }})
+    name: Django ${{ matrix.django }} (Python ${{ matrix.python-version }} with ${{ matrix.database.distribution }} ${{ matrix.database.version }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -65,9 +65,7 @@ jobs:
         # Set Python versions to test against
         python-version:
           # https://endoflife.date/python
-          - '3.11'  # [EOL] End of Life: 31 Dec 2027
           - '3.12'  # [EOL] End of Life: 31 Dec 2028
-          - '3.13'  # [EOL] End of Life: 31 Oct 2029
         # Set database versions to test against
         database:
           # https://endoflife.date/mysql
@@ -76,6 +74,12 @@ jobs:
           # - { distribution: mariadb, version: '10.11' } # [LTS] Maintained until: 16 Feb 2028
           - { distribution: mariadb, version: '11.4' }  # [LTS] Maintained until: 29 May 2029
           - { distribution: mariadb, version: '11.8' }  # [LTS] Maintained until: 04 Jun 2028
+        # Django version, as the tox factor (py3-django<xy>)
+        # https://endoflife.date/django
+        django:
+          - '52'  # [LTS] End of Life: 30 Apr 2028
+          - '60'  # End of Life: 30 Apr 2027
+          - '61'  # End of Life: 31 Dec 2027
 
     steps:
       # Checkout the repository
@@ -128,7 +132,7 @@ jobs:
           DB_PORT: 3306
           DB_USER: root
           DB_PASSWORD: temp_password_aa_tox_tests
-        run: tox -v
+        run: tox -v -e py3-django${{ matrix.django }}
 
       # Upload coverage to Codecov
 #      - name: Upload Coverage
@@ -162,7 +166,7 @@ jobs:
   # make it a required status check.
   test-postgres:
     needs: [ pre-commit ]
-    name: AA Latest (Python ${{ matrix.python-version }} with postgres ${{ matrix.postgres-version }}) [allowed to fail]
+    name: Django ${{ matrix.django }} (Python ${{ matrix.python-version }} with postgres ${{ matrix.postgres-version }}) [allowed to fail]
     runs-on: ubuntu-latest
     continue-on-error: true
 
@@ -171,6 +175,10 @@ jobs:
       matrix:
         python-version:
           - '3.12'
+        django:
+          - '52'
+          - '60'
+          - '61'
         # https://endoflife.date/postgresql
         postgres-version:
           - '17'
@@ -232,7 +240,7 @@ jobs:
           DB_PORT: 5432
           DB_USER: postgres
           DB_PASSWORD: temp_password_aa_tox_tests
-        run: tox -v
+        run: tox -v -e py3-django${{ matrix.django }}
 
   # Run PyPi Build Test
   pypi-build-test:

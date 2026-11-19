@@ -24,7 +24,7 @@ from django.utils import timezone
 # Django EVE SDE
 from eve_sde import sde_tasks
 from eve_sde.models import EveSDE, EveSDESection, Region
-from eve_sde.sde_rest import sde_tables_for
+from eve_sde.sde_rest import sde_file_urls, sde_tables_for
 from eve_sde.tests.rest_fakes import ALL_TABLES, BASE, PREVIOUS, RELEASE, FakeCCP
 
 
@@ -88,7 +88,7 @@ class VersionCheckTests(RestPlannerTestCase):
         self.serve()
 
         self.assertEqual(self.plan(), {})
-        self.assertNotIn(f"{BASE}/{RELEASE}/_changes.jsonl", self.ccp.requested)
+        self.assertNotIn("_changes", self.ccp.table_urls())
 
     def test_a_section_missing_a_stored_version_is_checked(self):
         self.settle(Region={"versions": {}})
@@ -122,6 +122,24 @@ class ChangesTests(RestPlannerTestCase):
         self.assertEqual(plan["Moon"], "depends on types")
         self.assertNotIn("BlueprintActivityProduct", plan)  # only cares about added / removed types
 
+    def test_changes_are_read_from_their_blob(self):
+        self.settle()
+        self.serve(moved=["mapRegions"], changes=[changed("mapRegions", [10000002])])
+
+        self.assertEqual(self.plan(), {"Region": "mapRegions changed"})
+        self.assertIn("https://sde.evetech.net/blobs/v-_changes.jsonl", self.ccp.requested)
+        self.assertNotIn(f"{BASE}/{RELEASE}/_changes.jsonl", self.ccp.requested)
+
+    def test_changes_fall_back_to_the_release_url_without_blobs(self):
+        self.settle()
+        self.serve(moved=["mapRegions"], changes=[changed("mapRegions", [10000002])])
+        self.ccp.blobs.clear()
+
+        with self.assertLogs("eve_sde", level="WARNING"):
+            self.assertEqual(self.plan(), {"Region": "mapRegions changed"})
+
+        self.assertIn(f"{BASE}/{RELEASE}/_changes.jsonl", self.ccp.requested)
+
     def test_republish_with_no_row_changes_plans_nothing(self):
         # 110708Z -> 160425Z: every version moved, _changes is empty
         self.settle()
@@ -138,10 +156,10 @@ class HistoryTests(RestPlannerTestCase):
     def serve_previous(self, changes):
         """Keep PREVIOUS's index, with its _changes compared with OLDER."""
         url = f"{BASE}/{PREVIOUS}/_changes.jsonl"
-        self.ccp.files[f"{BASE}/{PREVIOUS}/"] = json.dumps({
-            "release": PREVIOUS, "tables": {"_changes": {"version": "c", "jsonl": {"url": url}}},
-        })
+        info = {"version": "c", "jsonl": {"url": url}}
+        self.ccp.files[f"{BASE}/{PREVIOUS}/"] = json.dumps({"release": PREVIOUS, "tables": {"_changes": info}})
         self.ccp.files[url] = json.dumps({"comparedWith": f"tranquility@{self.OLDER}", "tables": changes}) + "\n"
+        self.ccp.blobs[sde_file_urls(info)[0]] = url
 
     def test_changes_from_both_kept_releases_are_merged(self):
         self.settle(release=self.OLDER)

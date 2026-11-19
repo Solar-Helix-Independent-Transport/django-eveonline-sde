@@ -76,6 +76,7 @@ from eve_sde.sde_rest import (
     download_file,
     fetch_sde_release,
     get_sde_release,
+    sde_file_urls,
     sde_tables_for,
     section_versions,
 )
@@ -279,9 +280,14 @@ def fetch_rest_changes(index: dict):
         {"table": "types", "added": {"ints": [98700], "strings": []}, "schemaChanged": true}, ...]}
     """
     try:
-        url = index["tables"]["_changes"]["jsonl"]["url"]
-        response = httpx2.get(url, follow_redirects=True)
-        response.raise_for_status()
+        blob_url, url = sde_file_urls(index["tables"]["_changes"])
+        response = httpx2.get(blob_url, follow_redirects=True)
+        try:
+            response.raise_for_status()
+        except httpx2.HTTPStatusError:
+            logger.warning(f"SDE changes - failed to read {blob_url}, trying {url}")
+            response = httpx2.get(url, follow_redirects=True)
+            response.raise_for_status()
         record = json.loads(next(_l for _l in response.text.splitlines() if _l.strip()))
         compared = record["comparedWith"].split("@", 1)[1]
     except Exception:

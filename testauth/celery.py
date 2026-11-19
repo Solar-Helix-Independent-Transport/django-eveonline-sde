@@ -4,6 +4,7 @@ Celery config
 
 # Standard Library
 import os
+import tempfile
 
 # Third Party
 from celery import Celery
@@ -36,7 +37,12 @@ app.conf.worker_prefetch_multiplier = (
     1  # only prefetch single tasks at a time on the workers so that prio tasks happen
 )
 
-app.conf.ONCE = {"backend": "allianceauth.services.tasks.DjangoBackend", "settings": {}}
+# celery_once's file backend, so the test project needs neither AllianceAuth's
+# Django-cache backend nor a redis server for the lock
+app.conf.ONCE = {
+    "backend": "celery_once.backends.File",
+    "settings": {"location": os.path.join(tempfile.gettempdir(), "testauth_celery_once")},
+}
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)

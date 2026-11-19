@@ -10,7 +10,11 @@ from datetime import datetime, timedelta, timezone
 import httpx2
 
 # Django EVE SDE
-from eve_sde.app_settings import ESDE_FULL_UPDATE_DAYS, ESDE_SELECTIVE_UPDATES
+from eve_sde.app_settings import (
+    ESDE_FULL_UPDATE_DAYS,
+    ESDE_SELECTIVE_UPDATES,
+    ESDE_SOURCE,
+)
 from eve_sde.models import EveSDE, EveSDESection
 from eve_sde.models.certificates import (
     Certificate,
@@ -66,6 +70,15 @@ from eve_sde.models.types import (
     TypeListCategory,
     TypeListGroup,
     TypeListType,
+)
+from eve_sde.sde_rest import (
+    SDE_REST_URL,
+    download_file,
+    fetch_sde_release,
+    get_sde_release,
+    sde_file_urls,
+    sde_tables_for,
+    section_versions,
 )
 
 logger = logging.getLogger(__name__)
@@ -137,33 +150,6 @@ SDE_FILE_NAME = "eve-online-static-data-latest-jsonl.zip"
 SDE_FOLDER = "eve-sde"
 
 
-def download_file(url, local_filename):
-    """
-    Downloads a file from a given URL using httpx2 and saves it locally.
-
-    Args:
-        url (str): The URL of the file to download.
-        local_filename (str): The path and name to save the downloaded file.
-
-    Raises:
-        Exception: Re-raises any download failure after logging it, and removes
-            any partially written file so callers never see a truncated/corrupt
-            local file mistaken for a good one.
-    """
-    try:
-        with httpx2.stream("GET", url, follow_redirects=True) as response:
-            response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
-            with open(local_filename, "wb") as f:
-                for chunk in response.iter_bytes():
-                    f.write(chunk)
-        logger.info(f"File downloaded successfully to: {local_filename}")
-    except Exception:
-        logger.exception(f"Failed to download {url}")
-        if os.path.exists(local_filename):
-            os.remove(local_filename)
-        raise
-
-
 def delete_sde_zip():
     if os.path.exists(SDE_FILE_NAME):
         os.remove(SDE_FILE_NAME)
@@ -188,14 +174,11 @@ def get_latest_sde():
 
 
 def check_sde_version():
-    build_number = get_latest_sde().get("buildNumber")
-
+    """True when the loaded SDE is the latest: the same REST release, or zip build."""
     current = EveSDE.get_solo()
-
-    if current.build_number != build_number:
-        return False
-
-    return True
+    if ESDE_SOURCE == "rest":
+        return current.release == get_sde_release().get("release")
+    return current.build_number == get_latest_sde().get("buildNumber")
 
 
 def fetch_sde_changes(target_build: int, since_build: int):
@@ -258,30 +241,159 @@ def merge_sde_changes(builds, since_build: int):
     return out
 
 
-def plan_sde_update(target_build: int, full: bool = False):
+def _plan_reason(mdl, section, full: bool, stale_before):
+    """Why `mdl` reloads whatever the SDE says changed, or None."""
+    if full:
+        return "full update"
+    if not ESDE_SELECTIVE_UPDATES:
+        return "selective updates disabled"
+    if section is None:
+        return "never loaded"
+    if section.import_fingerprint != mdl.import_fingerprint():
+        return "import code changed"
+    if stale_before and section.last_update < stale_before:
+        return f"not loaded in {ESDE_FULL_UPDATE_DAYS} days"
+    return None
+
+
+def plan_sde_update(target, full: bool = False):
     """
     {index in SDE_PARTS_TO_UPDATE: reason} for every model that needs loading
-    to bring it to target_build. Models left out are already up to date.
+    to bring it to `target`: a REST release index (ESDE_SOURCE "rest") or a
+    zip build number. Models left out are already up to date.
     """
     sections = {_s.sde_section: _s for _s in EveSDESection.objects.all()}
     stale_before = None
     if ESDE_FULL_UPDATE_DAYS:
         stale_before = datetime.now(tz=timezone.utc) - timedelta(days=ESDE_FULL_UPDATE_DAYS)
+    if ESDE_SOURCE == "rest":
+        return _plan_rest_update(target, sections, full, stale_before)
+    return _plan_zip_update(target, sections, full, stale_before)
 
+
+def fetch_rest_changes(index: dict):
+    """
+    (release compared with, {table: {"ops": {...}, "ids": {...}}}) from the
+    release's _changes, or (None, None) when it can't be read.
+
+    {"comparedWith": "tranquility@20261111T110708Z", "tables": [
+        {"table": "types", "added": {"ints": [98700], "strings": []}, "schemaChanged": true}, ...]}
+    """
+    try:
+        blob_url, url = sde_file_urls(index["tables"]["_changes"])
+        response = httpx2.get(blob_url, follow_redirects=True)
+        try:
+            response.raise_for_status()
+        except httpx2.HTTPStatusError:
+            logger.warning(f"SDE changes - failed to read {blob_url}, trying {url}")
+            response = httpx2.get(url, follow_redirects=True)
+            response.raise_for_status()
+        record = json.loads(next(_l for _l in response.text.splitlines() if _l.strip()))
+        compared = record["comparedWith"].split("@", 1)[1]
+    except Exception:
+        logger.warning("SDE changes - failed to read _changes", exc_info=True)
+        return None, None
+    changes = {}
+    for table in record.get("tables", []):
+        ops = set()
+        ids = set()
+        for op, val in table.items():
+            if op == "table" or not val:
+                continue
+            if isinstance(val, dict):
+                _ids = val.get("ints", []) + val.get("strings", [])
+                if not _ids:
+                    continue
+                ids.update(_ids)
+            ops.add(op)
+        if ops:
+            changes[table["table"]] = {"ops": ops, "ids": ids}
+    return compared, changes
+
+
+def rest_changes_since(index: dict, releases) -> dict:
+    """
+    {release: changes from it up to `index`'s release} for each of `releases`
+    still in CCP's history. Each release's _changes only reaches back one
+    release, so this follows comparedWith back, merging as it goes, until
+    every one is found or the next release back is gone (CCP keeps two).
+    """
+    wanted = set(releases)
+    found = {}
+    merged = {}
+    current = index
+    while wanted - found.keys():
+        compared, changes = fetch_rest_changes(current)
+        if changes is None:
+            break
+        for table, change in changes.items():
+            _c = merged.setdefault(table, {"ops": set(), "ids": set()})
+            _c["ops"] |= change["ops"]
+            _c["ids"] |= change["ids"]
+        found[compared] = {_t: {"ops": set(_c["ops"]), "ids": set(_c["ids"])} for _t, _c in merged.items()}
+        if not wanted - found.keys():
+            break
+        try:
+            response = httpx2.get(SDE_REST_URL.format(release=compared), follow_redirects=True)
+            if response.status_code == 404:
+                # retired, anything older reloads without row-level history
+                break
+            response.raise_for_status()
+            current = response.json()
+        except Exception:
+            logger.warning(f"SDE changes - failed to read release {compared}", exc_info=True)
+            break
+    return {_r: _c for _r, _c in found.items() if _r in wanted}
+
+
+def _plan_rest_update(index: dict, sections: dict, full: bool, stale_before):
+    plan = {}
+    pending = []  # a table the model reads has a new version
+    for idx, mdl in enumerate(SDE_PARTS_TO_UPDATE):
+        if mdl.sde_file_key() not in index["tables"]:
+            # loading would fail on the missing table, this needs a code change
+            logger.error(f"{mdl.__name__} - {mdl.Import.filename} is not in the SDE release, not reloading")
+            continue
+        section = sections.get(mdl.__name__)
+        reason = _plan_reason(mdl, section, full, stale_before)
+        if reason:
+            plan[idx] = reason
+            continue
+        if getattr(mdl.Import, "extra_data", False) and section.release != index["release"]:
+            # its outside data may have changed whatever the SDE tables did
+            plan[idx] = "loads extra data from outside the SDE"
+            continue
+        versions = section.versions or {}
+        for table in sde_tables_for([mdl]):
+            if versions.get(table) != index["tables"].get(table, {}).get("version"):
+                pending.append(idx)
+                break
+
+    if pending:
+        # sections loaded from a release CCP no longer keeps (or from the zip) reload
+        since = {sections[SDE_PARTS_TO_UPDATE[_i].__name__].release for _i in pending}
+        history = rest_changes_since(index, since - {None, index["release"]})
+        for idx in pending:
+            mdl = SDE_PARTS_TO_UPDATE[idx]
+            changes = history.get(sections[mdl.__name__].release)
+            if changes is None:
+                plan[idx] = "no row-level history"
+                continue
+            reason = mdl.change_reason(changes)
+            if reason:
+                plan[idx] = reason
+
+    return dict(sorted(plan.items()))
+
+
+def _plan_zip_update(target_build: int, sections: dict, full: bool, stale_before):
     plan = {}
     pending = {}  # index: build the model was last loaded from
     for idx, mdl in enumerate(SDE_PARTS_TO_UPDATE):
         section = sections.get(mdl.__name__)
-        if full:
-            plan[idx] = "full update"
-        elif not ESDE_SELECTIVE_UPDATES:
-            plan[idx] = "selective updates disabled"
-        elif section is None:
-            plan[idx] = "never loaded"
-        elif section.import_fingerprint != mdl.import_fingerprint():
-            plan[idx] = "import code changed"
-        elif stale_before and section.last_update < stale_before:
-            plan[idx] = f"not loaded in {ESDE_FULL_UPDATE_DAYS} days"
+        reason = _plan_reason(mdl, section, full, stale_before)
+        if reason:
+            plan[idx] = reason
         elif section.build_number > target_build:
             plan[idx] = f"loaded from newer build {section.build_number}"
         elif section.build_number < target_build:
@@ -340,14 +452,48 @@ def process_section_of_sde(id: int = 0):
     SDE_PARTS_TO_UPDATE[id].load_from_sde(SDE_FOLDER)
 
 
+def fetch_sde_for_plan(target, plan: dict):
+    """
+    Put what `plan` loads in SDE_FOLDER: each planned model's own table from
+    the REST release `target` is the index of, or the whole zip of build
+    `target`.
+    """
+    if ESDE_SOURCE == "rest":
+        tables = dict.fromkeys(SDE_PARTS_TO_UPDATE[_i].sde_file_key() for _i in plan)
+        fetch_sde_release(target, list(tables), SDE_FOLDER)
+    else:
+        download_extract_sde(target)
+
+
+def fetch_whole_sde():
+    """Every table of the latest SDE into SDE_FOLDER, for inspecting it."""
+    if ESDE_SOURCE == "rest":
+        index = get_sde_release()
+        fetch_sde_release(index, [_t for _t in index["tables"] if not _t.startswith("_")], SDE_FOLDER)
+    else:
+        download_extract_sde()
+
+
+def get_sde_target():
+    """
+    (what to update to, the record finish_sde_update saves): the latest REST
+    release's index for both, or the zip's build number and latest.jsonl.
+    """
+    if ESDE_SOURCE == "rest":
+        index = get_sde_release()
+        return index, index
+    latest = get_latest_sde()
+    return latest.get("buildNumber"), latest
+
+
 def process_from_sde(start_from: int = 0, full: bool = False):
     """
-        Update the SDE models in order, only those the SDE changes feed says
-        changed since they were last loaded unless `full`.
+        Update the SDE models in order, only those the SDE says changed since
+        they were last loaded unless `full`.
     """
-    latest = get_latest_sde()
+    target, latest = get_sde_target()
     build = latest.get("buildNumber")
-    plan = plan_sde_update(build, full=full)
+    plan = plan_sde_update(target, full=full)
     log_sde_plan(build, plan)
 
     if not plan:
@@ -355,7 +501,7 @@ def process_from_sde(start_from: int = 0, full: bool = False):
         finish_sde_update(plan, latest)
         return
 
-    download_extract_sde(build)
+    fetch_sde_for_plan(target, {_i: _r for _i, _r in plan.items() if _i >= start_from})
 
     try:
         for idx, mdl in enumerate(SDE_PARTS_TO_UPDATE):
@@ -367,7 +513,7 @@ def process_from_sde(start_from: int = 0, full: bool = False):
 
         delete_removed_rows()
         # only recorded as the current build if every section above completed
-        finish_sde_update(plan)
+        finish_sde_update(plan, latest)
     finally:
         delete_sde_folder()
 
@@ -392,9 +538,21 @@ def finish_sde_update(plan, sde_data: dict = None):
     of the plan had no changes, so they are now current at this build too.
     """
     build = set_sde_version(sde_data)
-    skipped = [_m.__name__ for _i, _m in enumerate(SDE_PARTS_TO_UPDATE) if _i not in plan]
-    if skipped:
-        EveSDESection.objects.filter(sde_section__in=skipped).update(build_number=build)
+    skipped = [_m for _i, _m in enumerate(SDE_PARTS_TO_UPDATE) if _i not in plan]
+    if not skipped:
+        return
+    if sde_data and "tables" in sde_data:
+        # a REST release index, the skipped models' tables are current at it
+        versions = {_t: _i["version"] for _t, _i in sde_data["tables"].items()}
+        models = {_m.__name__: _m for _m in skipped}
+        sections = list(EveSDESection.objects.filter(sde_section__in=models))
+        for section in sections:
+            section.build_number = build
+            section.release = sde_data["release"]
+            section.versions = section_versions(models[section.sde_section], versions)
+        EveSDESection.objects.bulk_update(sections, ["build_number", "release", "versions"])
+    else:
+        EveSDESection.objects.filter(sde_section__in=[_m.__name__ for _m in skipped]).update(build_number=build)
 
 
 def read_sde_version():
@@ -410,7 +568,8 @@ def set_sde_version(sde_data: dict = None):
     """
     {"_key": "sde", "buildNumber": 3142455, "releaseDate": "2025-12-15T11:14:02Z"}
 
-    From the extracted SDE unless given the same record from latest.jsonl.
+    From the SDE folder unless given the same record from latest.jsonl, or a
+    REST release index (which also has "release").
     """
     if sde_data is None:
         sde_data = read_sde_version()
@@ -424,6 +583,8 @@ def set_sde_version(sde_data: dict = None):
 
     _o = EveSDE.get_solo()
     _o.build_number = build
+    # None from the zip
+    _o.release = sde_data.get("release")
     _o.release_date = release
     _o.last_check_date = datetime.now(tz=timezone.utc)
     _o.save()

@@ -1,0 +1,78 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "groupID",
+    "type": "object",
+    "properties": {
+        "groupID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "anchorable": {
+            "type": "boolean"
+        },
+        "anchored": {
+            "type": "boolean"
+        },
+        "categoryID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "fittableNonSingleton": {
+            "type": "boolean"
+        },
+        "iconID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "name": {
+            "$ref": "#/$defs/Localized"
+        },
+        "published": {
+            "type": "boolean"
+        },
+        "useBasePrice": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "groupID",
+        "categoryID",
+        "name"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

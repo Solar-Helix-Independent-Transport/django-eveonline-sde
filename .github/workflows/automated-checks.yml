@@ -54,7 +54,7 @@ jobs:
   # Run Test Coverage
   test-coverage:
     needs: [ pre-commit ]
-    name: AA Latest (Python ${{ matrix.python-version }} with ${{ matrix.database.distribution }} ${{ matrix.database.version }})
+    name: Django ${{ matrix.django }} (Python ${{ matrix.python-version }} with ${{ matrix.database.distribution }} ${{ matrix.database.version }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -65,9 +65,7 @@ jobs:
         # Set Python versions to test against
         python-version:
           # https://endoflife.date/python
-          - '3.11'  # [EOL] End of Life: 31 Dec 2027
           - '3.12'  # [EOL] End of Life: 31 Dec 2028
-          - '3.13'  # [EOL] End of Life: 31 Oct 2029
         # Set database versions to test against
         database:
           # https://endoflife.date/mysql
@@ -76,6 +74,12 @@ jobs:
           # - { distribution: mariadb, version: '10.11' } # [LTS] Maintained until: 16 Feb 2028
           - { distribution: mariadb, version: '11.4' }  # [LTS] Maintained until: 29 May 2029
           - { distribution: mariadb, version: '11.8' }  # [LTS] Maintained until: 04 Jun 2028
+        # Django version, as the tox factor (py3-django<xy>)
+        # https://endoflife.date/django
+        django:
+          - '52'  # [LTS] End of Life: 30 Apr 2028
+          - '60'  # End of Life: 30 Apr 2027
+          - '61'  # End of Life: 31 Dec 2027
 
     steps:
       # Checkout the repository
@@ -128,7 +132,7 @@ jobs:
           DB_PORT: 3306
           DB_USER: root
           DB_PASSWORD: temp_password_aa_tox_tests
-        run: tox -v
+        run: tox -v -e py3-django${{ matrix.django }}
 
       # Upload coverage to Codecov
 #      - name: Upload Coverage
@@ -155,6 +159,88 @@ jobs:
 #          verbose: true # optional (default = false)
 #        env:
 #          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # Run the suite against PostgreSQL. AllianceAuth only officially supports
+  # MySQL/MariaDB, so this job is allowed to fail - continue-on-error keeps a
+  # red result here from failing the workflow, and nothing `needs` it. Don't
+  # make it a required status check.
+  test-postgres:
+    needs: [ pre-commit ]
+    name: Django ${{ matrix.django }} (Python ${{ matrix.python-version }} with postgres ${{ matrix.postgres-version }}) [allowed to fail]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.12'
+        django:
+          - '52'
+          - '60'
+          - '61'
+        # https://endoflife.date/postgresql
+        postgres-version:
+          - '17'
+
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: temp_password_aa_tox_tests
+          POSTGRES_DB: tox_allianceauth
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      # Checkout the repository
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # Install redis
+      - name: Install redis
+        uses: shogo82148/actions-setup-redis@v1
+        with:
+          redis-version: ${{ env.REDIS_VERSION }}
+
+      # Verify that redis is up
+      - name: Verify that redis is up
+        run: redis-cli ping
+
+      # tox.ini installs mysqlclient for every env, so its build headers are
+      # still needed even though this job doesn't use MySQL.
+      - name: Install MySQL client build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-libmysqlclient-dev pkg-config
+
+      # Set up Python
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Install Tox and any other packages
+      - name: Install Tox and any other packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade tox tox-gh-actions
+
+      # Run Tox against the postgres service container
+      - name: Run Tox
+        env:
+          USE_POSTGRES: "True"
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: temp_password_aa_tox_tests
+        run: tox -v -e py3-django${{ matrix.django }}
 
   # Run PyPi Build Test
   pypi-build-test:

@@ -1,11 +1,14 @@
 """Tests for the small standalone helpers in models/utils.py."""
 # Standard Library
+import importlib
 from unittest import mock
 
 # Django
-from django.test import TestCase
+from django.core.exceptions import ImproperlyConfigured
+from django.test import SimpleTestCase, TestCase, override_settings
 
 # Django EVE SDE
+from eve_sde import app_settings
 from eve_sde.models.utils import get_langs, key_to_lang, lang_key
 
 
@@ -36,3 +39,19 @@ class GetLangsTests(TestCase):
     def test_returns_empty_list_when_languages_setting_is_absent(self):
         with mock.patch("eve_sde.models.utils.settings", new=object()):
             self.assertEqual(get_langs(), [])
+
+
+class EsdeSourceSettingTests(SimpleTestCase):
+
+    def tearDown(self):
+        importlib.reload(app_settings)
+
+    def test_is_case_insensitive(self):
+        with override_settings(ESDE_SOURCE="REST"):
+            importlib.reload(app_settings)
+
+        self.assertEqual(app_settings.ESDE_SOURCE, "rest")
+
+    def test_unknown_source_is_refused(self):
+        with override_settings(ESDE_SOURCE="api"), self.assertRaises(ImproperlyConfigured):
+            importlib.reload(app_settings)

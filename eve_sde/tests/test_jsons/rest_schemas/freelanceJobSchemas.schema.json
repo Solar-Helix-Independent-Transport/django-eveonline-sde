@@ -1,0 +1,388 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "major",
+    "type": "object",
+    "properties": {
+        "major": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "schemas": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/Schema"
+            }
+        }
+    },
+    "required": [
+        "major",
+        "schemas"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Boolean": {
+            "type": "object",
+            "properties": {
+                "choiceLabel": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "default": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "iconID": {
+                    "type": "string"
+                },
+                "optionFalse": {
+                    "$ref": "#/$defs/Option"
+                },
+                "optionTrue": {
+                    "$ref": "#/$defs/Option"
+                },
+                "title": {
+                    "$ref": "#/$defs/Localized"
+                }
+            },
+            "required": [
+                "choiceLabel",
+                "description",
+                "iconID",
+                "title"
+            ],
+            "additionalProperties": false
+        },
+        "DeliveryLocation": {
+            "type": "object",
+            "properties": {
+                "acceptedValueTypes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "description": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "iconID": {
+                    "type": "string"
+                },
+                "maxEntries": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "title": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "unsetDescription": {
+                    "$ref": "#/$defs/Localized"
+                }
+            },
+            "required": [
+                "acceptedValueTypes",
+                "description",
+                "iconID",
+                "maxEntries",
+                "title",
+                "unsetDescription"
+            ],
+            "additionalProperties": false
+        },
+        "InventoryType": {
+            "type": "object",
+            "properties": {
+                "acceptedValueTypes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "description": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "iconID": {
+                    "type": "string"
+                },
+                "title": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "unsetDescription": {
+                    "$ref": "#/$defs/Localized"
+                }
+            },
+            "required": [
+                "acceptedValueTypes",
+                "description",
+                "iconID",
+                "title",
+                "unsetDescription"
+            ],
+            "additionalProperties": false
+        },
+        "ItemDelivery": {
+            "type": "object",
+            "properties": {
+                "deliveryLocation": {
+                    "$ref": "#/$defs/DeliveryLocation"
+                },
+                "description": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "iconID": {
+                    "type": "string"
+                },
+                "inventoryType": {
+                    "$ref": "#/$defs/InventoryType"
+                },
+                "title": {
+                    "$ref": "#/$defs/Localized"
+                }
+            },
+            "required": [
+                "description",
+                "iconID",
+                "title"
+            ],
+            "additionalProperties": false
+        },
+        "Limit": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "iconID": {
+                    "type": "string"
+                },
+                "title": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "unsetDescription": {
+                    "$ref": "#/$defs/Localized"
+                }
+            },
+            "required": [
+                "description",
+                "iconID",
+                "title",
+                "unsetDescription"
+            ],
+            "additionalProperties": false
+        },
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        },
+        "Matcher": {
+            "type": "object",
+            "properties": {
+                "acceptedValueTypes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "description": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "iconID": {
+                    "type": "string"
+                },
+                "maxEntries": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "optional": {
+                    "type": "boolean"
+                },
+                "title": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "unsetDescription": {
+                    "$ref": "#/$defs/Localized"
+                }
+            },
+            "required": [
+                "acceptedValueTypes",
+                "description",
+                "iconID",
+                "maxEntries",
+                "optional",
+                "title",
+                "type",
+                "unsetDescription"
+            ],
+            "additionalProperties": false
+        },
+        "Multiplier": {
+            "type": "object",
+            "properties": {
+                "defaultValue": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "description": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "iconID": {
+                    "type": "string"
+                },
+                "maxValue": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "minValue": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "title": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "unsetDescription": {
+                    "$ref": "#/$defs/Localized"
+                }
+            },
+            "required": [
+                "defaultValue",
+                "description",
+                "iconID",
+                "maxValue",
+                "minValue",
+                "title",
+                "unsetDescription"
+            ],
+            "additionalProperties": false
+        },
+        "Option": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "title": {
+                    "$ref": "#/$defs/Localized"
+                }
+            },
+            "required": [
+                "description",
+                "title"
+            ],
+            "additionalProperties": false
+        },
+        "Parameter": {
+            "x-sde-key": "key",
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "boolean": {
+                    "$ref": "#/$defs/Boolean"
+                },
+                "itemDelivery": {
+                    "$ref": "#/$defs/ItemDelivery"
+                },
+                "matcher": {
+                    "$ref": "#/$defs/Matcher"
+                }
+            },
+            "required": [
+                "key"
+            ],
+            "additionalProperties": false
+        },
+        "Schema": {
+            "x-sde-key": "name",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "contentTags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "contributionMultiplier": {
+                    "$ref": "#/$defs/Multiplier"
+                },
+                "description": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "iconID": {
+                    "type": "string"
+                },
+                "maxContributionsPerParticipant": {
+                    "$ref": "#/$defs/Limit"
+                },
+                "maxProgressPerContribution": {
+                    "$ref": "#/$defs/Limit"
+                },
+                "parameters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Parameter"
+                    }
+                },
+                "progressDescription": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "rewardDescription": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "targetDescription": {
+                    "$ref": "#/$defs/Localized"
+                },
+                "title": {
+                    "$ref": "#/$defs/Localized"
+                }
+            },
+            "required": [
+                "name",
+                "contentTags",
+                "description",
+                "iconID",
+                "parameters",
+                "progressDescription",
+                "rewardDescription",
+                "targetDescription",
+                "title"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

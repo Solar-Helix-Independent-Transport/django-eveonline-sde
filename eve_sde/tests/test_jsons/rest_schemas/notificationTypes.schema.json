@@ -1,0 +1,57 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "notificationTypeID",
+    "type": "object",
+    "properties": {
+        "notificationTypeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "displayName": {
+            "$ref": "#/$defs/Localized"
+        },
+        "internalName": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "notificationTypeID",
+        "internalName"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

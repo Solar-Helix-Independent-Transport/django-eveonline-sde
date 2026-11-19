@@ -4,6 +4,10 @@ real extracted SDE folder.
 
     python -I eve_sde/tests/test_jsons/make_mini_sde.py <extracted sde folder>
 
+and the REST schemas (rest_schemas/) from the current release with:
+
+    python -I eve_sde/tests/test_jsons/make_mini_sde.py --schemas
+
 Takes a small, self-consistent slice: a few solar systems and everything in
 them, a handful of types plus every type, group, category, market group,
 attribute, effect and certificate they reference. Lists are trimmed to the
@@ -193,5 +197,35 @@ def main(src):
         f.write(json.dumps(sde_meta) + "\n")
 
 
+def refresh_schemas():
+    """
+    Replace rest_schemas/ with the current REST release's schema for every
+    table in the fixture, for test_sde_rest and the REST side of mini_sde.
+    """
+    # Standard Library
+    import gzip
+    import urllib.request
+
+    def get(url):
+        # CCP gzips every response, asked for or not
+        with urllib.request.urlopen(url) as r:
+            body = r.read()
+        return json.loads(gzip.decompress(body) if body[:2] == b"\x1f\x8b" else body)
+
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rest_schemas")
+    index = get("https://sde.evetech.net/tranquility/latest/")
+    for filename in sorted(os.listdir(OUT)):
+        table = filename.removesuffix(".jsonl")
+        if not filename.endswith(".jsonl") or table.startswith("_"):
+            continue
+        schema = get(index["tables"][table]["jsonl"]["recordSchemaUrl"])
+        with open(os.path.join(out, f"{table}.schema.json"), "w") as f:
+            f.write(json.dumps(schema, indent=4, ensure_ascii=False) + "\n")
+    print(f"schemas from release {index['release']}")
+
+
 if __name__ == "__main__":
-    main(sys.argv[1])
+    if sys.argv[1] == "--schemas":
+        refresh_schemas()
+    else:
+        main(sys.argv[1])

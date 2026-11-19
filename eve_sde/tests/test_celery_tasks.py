@@ -27,15 +27,16 @@ class RetryConfigTests(TestCase):
             celery_tasks.check_for_sde_updates,
             celery_tasks.update_models_from_sde,
             celery_tasks.fetch_sde,
+            celery_tasks.cleanup_sde,  # re-reads the REST release index
         ):
             self.assertIn(httpx2.HTTPError, task.autoretry_for)
             self.assertEqual(task.max_retries, 5)
             self.assertTrue(task.retry_backoff)
 
     def test_non_network_tasks_do_not_autoretry(self):
-        # process_sde_section/cleanup_sde touch the DB/filesystem, not the
-        # network - a bad row shouldn't be silently retried.
-        for task in (celery_tasks.process_sde_section, celery_tasks.cleanup_sde):
+        # process_sde_section touches the DB/filesystem, not the network - a
+        # bad row shouldn't be silently retried.
+        for task in (celery_tasks.process_sde_section,):
             self.assertFalse(getattr(task, "autoretry_for", ()))
 
 
@@ -72,7 +73,7 @@ class UpdateModelsFromSdeTests(TestCase):
 
         plan = {0: "test", 3: "test", 7: "test"}
         with mock.patch.object(celery_tasks, "ESDE_TASK_SPLIT", True), \
-                mock.patch.object(celery_tasks, "get_latest_sde", return_value={"buildNumber": 5}), \
+                mock.patch.object(celery_tasks, "get_sde_target", return_value=(5, {"buildNumber": 5})), \
                 mock.patch.object(celery_tasks, "plan_sde_update", return_value=plan), \
                 mock.patch.object(celery_tasks, "chain", return_value=fake_chain_instance) as mock_chain:
             celery_tasks.update_models_from_sde()
@@ -80,9 +81,9 @@ class UpdateModelsFromSdeTests(TestCase):
         mock_chain.assert_called_once()
         (queue_arg,), _ = mock_chain.call_args
         # fetch_sde of the build + one process_sde_section per planned model + cleanup_sde
-        self.assertEqual(queue_arg[0].args, (5,))
+        self.assertEqual(queue_arg[0].args, (5, [0, 3, 7]))
         self.assertEqual([_t.args for _t in queue_arg[1:-1]], [(0,), (3,), (7,)])
-        self.assertEqual(queue_arg[-1].args, ([0, 3, 7],))
+        self.assertEqual(queue_arg[-1].args, ([0, 3, 7], None))
 
         fake_chain_instance.apply_async.assert_called_once()
         _, apply_kwargs = fake_chain_instance.apply_async.call_args
@@ -92,7 +93,7 @@ class UpdateModelsFromSdeTests(TestCase):
     def test_split_mode_with_nothing_to_load_queues_nothing(self):
         latest = {"buildNumber": 5}
         with mock.patch.object(celery_tasks, "ESDE_TASK_SPLIT", True), \
-                mock.patch.object(celery_tasks, "get_latest_sde", return_value=latest), \
+                mock.patch.object(celery_tasks, "get_sde_target", return_value=(5, latest)), \
                 mock.patch.object(celery_tasks, "plan_sde_update", return_value={}), \
                 mock.patch.object(celery_tasks, "finish_sde_update") as mock_finish, \
                 mock.patch.object(celery_tasks, "chain") as mock_chain:
@@ -126,6 +127,27 @@ class TaskDelegationTests(TestCase):
         mock_finish.assert_called_once_with([1, 2])
         mock_delete_folder.assert_called_once()
 
+    def test_cleanup_sde_finishes_a_rest_update_at_the_chains_release(self):
+        with mock.patch.object(celery_tasks, "get_sde_release", return_value={"tables": {}}) as mock_get, \
+                mock.patch.object(celery_tasks, "finish_sde_update") as mock_finish, \
+                mock.patch.object(celery_tasks, "delete_sde_folder"):
+            celery_tasks.cleanup_sde([1, 2], "20261111T160425Z")
+
+        mock_get.assert_called_once_with("20261111T160425Z")
+        mock_finish.assert_called_once_with([1, 2], {"tables": {}})
+
+    def test_cleanup_sde_network_failure_changes_nothing_before_retrying(self):
+        with mock.patch.object(celery_tasks, "get_sde_release", side_effect=httpx2.ConnectError("down")), \
+                mock.patch.object(celery_tasks, "delete_removed_rows") as mock_delete_rows, \
+                mock.patch.object(celery_tasks, "finish_sde_update") as mock_finish, \
+                mock.patch.object(celery_tasks, "delete_sde_folder") as mock_delete_folder:
+            with self.assertRaises(httpx2.ConnectError):
+                celery_tasks.cleanup_sde.run([1, 2], "20261111T160425Z")
+
+        mock_delete_rows.assert_not_called()
+        mock_finish.assert_not_called()
+        mock_delete_folder.assert_not_called()
+
     def test_cleanup_sde_sets_version_then_deletes_folder(self):
         with mock.patch.object(celery_tasks, "set_sde_version") as mock_set_version, \
                 mock.patch.object(celery_tasks, "delete_sde_folder") as mock_delete_folder:
@@ -156,11 +178,12 @@ class ResolveTaskLockBaseTests(TestCase):
     the same graceful=True behavior rather than crashing.
     """
 
-    def test_resolves_the_configured_default(self):
-        # Alliance Auth
-        from allianceauth.services.tasks import QueueOnce as AllianceAuthQueueOnce
+    def test_resolves_the_configured_path(self):
+        # Third Party
+        from celery_once import QueueOnce as UpstreamQueueOnce
 
-        self.assertIs(celery_tasks._resolve_task_lock_base(), AllianceAuthQueueOnce)
+        with mock.patch.object(celery_tasks, "ESDE_CELERY_TASK_BASE", "celery_once.QueueOnce"):
+            self.assertIs(celery_tasks._resolve_task_lock_base(), UpstreamQueueOnce)
 
     def test_falls_back_to_celery_once_when_the_configured_path_is_unimportable(self):
         # Third Party

@@ -1,0 +1,116 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "certificateID",
+    "type": "object",
+    "properties": {
+        "certificateID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "description": {
+            "$ref": "#/$defs/Localized"
+        },
+        "groupID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "name": {
+            "$ref": "#/$defs/Localized"
+        },
+        "recommendedFor": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "skillTypes": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/CertificatesSkillTypes"
+            }
+        }
+    },
+    "required": [
+        "certificateID",
+        "description",
+        "groupID",
+        "name",
+        "skillTypes"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "CertificatesSkillTypes": {
+            "x-sde-key": "typeID",
+            "type": "object",
+            "properties": {
+                "typeID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "advanced": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "basic": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "elite": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "improved": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "standard": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "typeID",
+                "advanced",
+                "basic",
+                "elite",
+                "improved",
+                "standard"
+            ],
+            "additionalProperties": false
+        },
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

@@ -20,7 +20,9 @@ requires-python = ">=3.10,<3.15"
 classifiers = [
     "Environment :: Web Environment",
     "Framework :: Django",
-    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.2",
+    "Framework :: Django :: 6.0",
+    "Framework :: Django :: 6.1",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
@@ -38,9 +40,10 @@ dynamic = [
     "version",
 ]
 dependencies = [
+    "brotli>=1.2",
     "celery>=5,<6",
     "celery-once>=3,<4",
-    "django-modeltranslation==0.19.17",
+    "django-modeltranslation>=0.20.6,<0.21",
     "django-solo>=2,<3",
     "httpx2>=2.13,<3",
 ]

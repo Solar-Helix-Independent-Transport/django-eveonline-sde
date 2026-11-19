@@ -6,15 +6,18 @@ import os
 from django.core.management.base import BaseCommand
 
 # Django EVE SDE
-from eve_sde.sde_tasks import SDE_FOLDER, delete_sde_folder, download_extract_sde
+from eve_sde.sde_tasks import SDE_FOLDER, delete_sde_folder, fetch_whole_sde
 
 
 class Command(BaseCommand):
     help = "Output all the fields/types from all SDE files."
 
     def handle(self, *args, **options):
-        download_extract_sde()
-        files = [f for f in os.listdir(SDE_FOLDER) if os.path.isfile(os.path.join(SDE_FOLDER, f))]
+        fetch_whole_sde()
+        files = [
+            f for f in os.listdir(SDE_FOLDER)
+            if f.endswith(".jsonl") and os.path.isfile(os.path.join(SDE_FOLDER, f))
+        ]
         for fl in files:
             self.stdout.write(f"{fl}")
             fields = set()

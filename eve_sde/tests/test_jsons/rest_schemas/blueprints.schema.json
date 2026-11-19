@@ -1,0 +1,218 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "blueprintTypeKey",
+    "type": "object",
+    "properties": {
+        "blueprintTypeKey": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "activities": {
+            "$ref": "#/$defs/BlueprintsActivities"
+        },
+        "blueprintTypeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "maxProductionLimit": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "blueprintTypeKey",
+        "activities",
+        "blueprintTypeID",
+        "maxProductionLimit"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Activity": {
+            "type": "object",
+            "properties": {
+                "materials": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Material"
+                    }
+                },
+                "skills": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Skill"
+                    }
+                },
+                "time": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "time"
+            ],
+            "additionalProperties": false
+        },
+        "BlueprintsActivities": {
+            "type": "object",
+            "properties": {
+                "copying": {
+                    "$ref": "#/$defs/Activity"
+                },
+                "invention": {
+                    "$ref": "#/$defs/InventionActivity"
+                },
+                "manufacturing": {
+                    "$ref": "#/$defs/ProductionActivity"
+                },
+                "reaction": {
+                    "$ref": "#/$defs/ProductionActivity"
+                },
+                "research_material": {
+                    "$ref": "#/$defs/Activity"
+                },
+                "research_time": {
+                    "$ref": "#/$defs/Activity"
+                }
+            },
+            "additionalProperties": false
+        },
+        "InventionActivity": {
+            "type": "object",
+            "properties": {
+                "materials": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Material"
+                    }
+                },
+                "products": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/InventionProduct"
+                    }
+                },
+                "skills": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Skill"
+                    }
+                },
+                "time": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "time"
+            ],
+            "additionalProperties": false
+        },
+        "InventionProduct": {
+            "type": "object",
+            "properties": {
+                "probability": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "typeID": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "quantity",
+                "typeID"
+            ],
+            "additionalProperties": false
+        },
+        "Material": {
+            "type": "object",
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "typeID": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "quantity",
+                "typeID"
+            ],
+            "additionalProperties": false
+        },
+        "Product": {
+            "type": "object",
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "typeID": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "quantity",
+                "typeID"
+            ],
+            "additionalProperties": false
+        },
+        "ProductionActivity": {
+            "type": "object",
+            "properties": {
+                "materials": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Material"
+                    }
+                },
+                "products": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Product"
+                    }
+                },
+                "skills": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Skill"
+                    }
+                },
+                "time": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "time"
+            ],
+            "additionalProperties": false
+        },
+        "Skill": {
+            "type": "object",
+            "properties": {
+                "level": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "typeID": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "level",
+                "typeID"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

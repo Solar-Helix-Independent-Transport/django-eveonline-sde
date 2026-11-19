@@ -2,6 +2,7 @@
 
 # Django
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 # # put your app settings here
 
@@ -21,6 +22,14 @@ ESDE_SELECTIVE_UPDATES = getattr(settings, "ESDE_SELECTIVE_UPDATES", True)
 # Safety net for selective updates, reload any model that hasn't been loaded
 # for this many days whatever the changes feed says. 0 to disable.
 ESDE_FULL_UPDATE_DAYS = getattr(settings, "ESDE_FULL_UPDATE_DAYS", 30)
+
+# Where the SDE comes from: "rest" is CCP's SDE API (https://sde.evetech.net/),
+# fetching only the tables that changed. "zip" is the whole SDE zip and the
+# build changes feed, kept as a fallback while the API is in Early Access.
+ESDE_SOURCE = str(getattr(settings, "ESDE_SOURCE", "rest")).lower()
+if ESDE_SOURCE not in ("rest", "zip"):
+    # a typo would otherwise silently fall back to the zip
+    raise ImproperlyConfigured(f'ESDE_SOURCE must be "rest" or "zip", not {ESDE_SOURCE!r}')
 
 # Models a Freelance job parameter's "character"/"corporation"/"alliance"/
 # "faction" accepted_value_types resolve to - these represent AllianceAuth's

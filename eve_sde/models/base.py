@@ -18,6 +18,7 @@ from django.utils.translation import gettext as _
 from eve_sde.app_settings import ESDE_BATCH_SIZE, ESDE_CHUNK_SIZE
 from eve_sde.models.admin import EveSDESection
 from eve_sde.models.utils import get_langs, get_langs_for_field, lang_key, val_from_dict
+from eve_sde.sde_rest import alias_sde_record, read_sde_schema, section_versions
 
 logger = logging.getLogger(__name__)
 
@@ -266,6 +267,8 @@ class JSONModel(models.Model):
         failed_rows = 0
 
         file_path = f"{folder_name}/{cls.Import.filename}"
+        # REST tables name their keys, put the zip's _key / _value back
+        schema = read_sde_schema(folder_name, cls.Import.filename)
 
         total_lines = 0
         with open(file_path) as json_file:
@@ -279,6 +282,8 @@ class JSONModel(models.Model):
                 row += 1
                 try:
                     rg = json.loads(line)
+                    if schema:
+                        rg = alias_sde_record(rg, schema)
                     if extra_fields:
                         if rg.get("_key") in extra_fields:
                             for f, v in extra_fields[rg.get("_key")].items():
@@ -496,17 +501,23 @@ class JSONModel(models.Model):
             logger.exception(f"Failed to read SDE version from {folder_name}/_sde.jsonl")
             raise
 
-        EveSDESection.objects.update_or_create(
-            sde_section=section,
-            defaults={
-                "build_number": build,
-                "last_update": last_update,
-                "total_lines": total_lines,
-                "total_rows": total_rows,
-                "import_fingerprint": cls.import_fingerprint(),
-                "removed_pks": sorted(removed, key=str),
-            }
-        )
+        defaults = {
+            "build_number": build,
+            "last_update": last_update,
+            "total_lines": total_lines,
+            "total_rows": total_rows,
+            "import_fingerprint": cls.import_fingerprint(),
+            "removed_pks": sorted(removed, key=str),
+        }
+        # only a REST folder's _sde.jsonl names its release; from the zip, any
+        # REST release / versions no longer describe these rows. Otherwise the
+        # versions of the tables this model reads, so the next run can tell
+        # whether any of them changed
+        defaults |= {
+            "release": sde_data.get("release"),
+            "versions": section_versions(cls, sde_data.get("versions", {})),
+        }
+        EveSDESection.objects.update_or_create(sde_section=section, defaults=defaults)
 
     class Meta:
         abstract = True

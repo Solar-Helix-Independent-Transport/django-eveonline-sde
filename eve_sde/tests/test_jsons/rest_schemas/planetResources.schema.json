@@ -1,0 +1,54 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "celestialID",
+    "type": "object",
+    "properties": {
+        "celestialID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "power": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "reagent": {
+            "$ref": "#/$defs/Reagent"
+        },
+        "workforce": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "celestialID"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Reagent": {
+            "type": "object",
+            "properties": {
+                "amount_per_cycle": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "cycle_period": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "secured_capacity": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "type_id": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "unsecured_capacity": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}

@@ -1,0 +1,46 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "typeID",
+    "type": "object",
+    "properties": {
+        "typeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "levels": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/MasteriesLevels"
+            }
+        }
+    },
+    "required": [
+        "typeID",
+        "levels"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "MasteriesLevels": {
+            "x-sde-key": "level",
+            "type": "object",
+            "properties": {
+                "level": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "certificateIDs": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "required": [
+                "level",
+                "certificateIDs"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

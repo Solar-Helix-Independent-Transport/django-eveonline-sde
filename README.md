@@ -17,7 +17,7 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
 ## Compatibility
 
 - Python 3.10 - 3.14
-- Django 4.2+
+- Django 5.2+
 - Redis (required by [`celery-once`](https://github.com/cameronmaske/celery-once) for task locking)
 - [AllianceAuth](https://gitlab.com/allianceauth/allianceauth) - optional, see [Optional Settings](#optional-settings)
 

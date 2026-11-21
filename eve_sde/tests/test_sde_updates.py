@@ -45,7 +45,8 @@ from eve_sde.models import (
     TypeDogma,
     TypeListType,
 )
-from eve_sde.tests.mini_sde import SDEUpdateHarness, load_fixture
+from eve_sde.tests.mini_sde import SDEUpdateHarness, load_fixture, snapshot
+from eve_sde.tests.rest_fakes import BASE
 
 ALL_MODELS = [_m.__name__ for _m in sde_tasks.SDE_PARTS_TO_UPDATE]
 
@@ -585,7 +586,7 @@ class EverythingAtOnceTests(SDEUpdateTestCase):
                 mock.patch.object(celery_tasks, "chain", EagerChain), \
                 mock.patch.multiple(
                     celery_tasks,
-                    get_latest_sde=sde_tasks.get_latest_sde,
+                    get_sde_target=sde_tasks.get_sde_target,
                     plan_sde_update=sde_tasks.plan_sde_update,
                     download_extract_sde=sde_tasks.download_extract_sde,
                     process_section_of_sde=sde_tasks.process_section_of_sde,
@@ -620,3 +621,117 @@ class HarnessSanityTests(SDEUpdateTestCase):
         self.assertEqual(SolarSystem.objects.get(pk=NULL_SYSTEM).planets.count(), 2)
         self.assertTrue(Star.objects.filter(pk=NULL_STAR).exists())
         self.assertTrue(Certificate.objects.exists())
+
+
+# The same tests against the SDE REST API (ESDE_SOURCE="rest").
+
+class InitialAndNoChangeRestTests(InitialAndNoChangeTests):
+    source = "rest"
+
+
+class PrimaryKeyModelRestTests(PrimaryKeyModelTests):
+    source = "rest"
+
+
+class NaturalKeyModelRestTests(NaturalKeyModelTests):
+    source = "rest"
+
+
+class DependencyRestTests(DependencyTests):
+    source = "rest"
+
+
+class CatchUpRestTests(CatchUpTests):
+    source = "rest"
+
+    def test_no_change_history_loads_everything(self):
+        """REST: without _changes, only the models reading a table whose version moved reload."""
+        sde = copy.deepcopy(self.releases[self.build])
+        change_types(sde)
+        self.release(sde)
+        latest = self.rest_releases[-1]
+        del self.rest_files[f"{BASE}/{latest}/_changes.jsonl"]
+
+        loaded = self.update()
+
+        self.assertEqual(set(loaded), {"ItemType", "BlueprintActivityProduct", "BlueprintActivityMaterial", "Moon"})
+        self.assertEqual(set(self.plans[-1].values()), {"no row-level history"})
+        self.assertMatchesFullLoad()
+
+
+class EverythingAtOnceRestTests(EverythingAtOnceTests):
+    source = "rest"
+
+
+class HarnessSanityRestTests(HarnessSanityTests):
+    source = "rest"
+
+
+class RestOnlyTests(SDEUpdateTestCase):
+    """What only the REST API does: versions, re-publishes, two kept releases."""
+
+    source = "rest"
+
+    def test_republish_loads_and_downloads_nothing(self):
+        self.requested.clear()
+        name = self.republish()
+
+        self.assertEqual(self.update(), [])
+        self.assertEqual(self.rest_tables_downloaded(), [])
+        self.assertEqual(EveSDE.get_solo().release, name)
+        self.assertEqual(set(EveSDESection.objects.values_list("release", flat=True)), {name})
+        self.assertMatchesFullLoad()
+
+    def test_only_the_tables_the_plan_reads_are_downloaded(self):
+        self.requested.clear()
+
+        loaded = self.next_build(rename_tanoo)
+
+        self.assertEqual(set(loaded), {"SolarSystem", "Stargate", "Planet", "Moon"})
+        # only the planned models' own tables: Moon's depends_on (types for the
+        # moon type's name) is looked up in the DB and compared by version
+        self.assertEqual(
+            self.rest_tables_downloaded(),
+            ["mapMoons", "mapPlanets", "mapSolarSystems", "mapStargates"],
+        )
+        self.assertMatchesFullLoad()
+
+    def test_rest_and_zip_full_loads_match(self):
+        from_rest = snapshot()
+        with mock.patch.object(sde_tasks, "ESDE_SOURCE", "zip"):
+            from_zip = self.full_load_snapshot(self.releases[self.build])
+
+        for name in from_zip:
+            self.assertEqual(from_rest[name], from_zip[name], f"{name} differs between REST and zip")
+
+    def test_back_to_rest_after_a_zip_run(self):
+        """A zip run clears REST state on what it loads, the next REST run reloads those."""
+        with mock.patch.object(sde_tasks, "ESDE_SOURCE", "zip"):
+            self.next_build(change_types)
+        self.assertIsNone(EveSDESection.objects.get(sde_section="ItemType").release)
+        self.assertIsNone(EveSDE.get_solo().release)
+
+        loaded = self.next_build(rename_tanoo)
+
+        self.assertIn("ItemType", loaded)
+        self.assertEqual(self.plans[-1]["ItemType"], "no row-level history")
+        self.assertEqual(EveSDESection.objects.get(sde_section="ItemType").release, self.rest_releases[-1])
+        self.assertMatchesFullLoad()
+
+
+class FirstRestRunTests(SDEUpdateTestCase):
+    """An install loaded from the zip, upgraded to the REST API."""
+
+    source = "zip"
+
+    def test_first_rest_run_reloads_everything(self):
+        with mock.patch.object(sde_tasks, "ESDE_SOURCE", "rest"):
+            loaded = self.next_build(change_types)
+
+            self.assertEqual(loaded, ALL_MODELS)
+            self.assertEqual(set(self.plans[-1].values()), {"no row-level history"})
+            self.assertEqual(set(EveSDESection.objects.values_list("release", flat=True)), {self.rest_releases[-1]})
+
+            # and selective from then on
+            self.assertEqual(self.next_build(rename_moon_type), ["ItemType", "Moon"])
+            self.assertMatchesFullLoad()

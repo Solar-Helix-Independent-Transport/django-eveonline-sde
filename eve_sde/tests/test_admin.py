@@ -437,6 +437,6 @@ class AdminAppListBuildNumberTests(TestCase):
 
     def test_other_apps_are_left_untouched(self):
         app_list = admin.site.get_app_list(self.request)
-        other_app = next(app for app in app_list if app["app_label"] == "authentication")
+        other_app = next(app for app in app_list if app["app_label"] == "auth")
 
         self.assertNotIn("SDE Build", other_app["name"])

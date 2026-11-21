@@ -1,0 +1,57 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "typeID",
+    "type": "object",
+    "properties": {
+        "typeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "fuel": {
+            "$ref": "#/$defs/SovereigntyUpgradesFuel"
+        },
+        "mutually_exclusive_group": {
+            "type": "string"
+        },
+        "power_allocation": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "power_production": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "workforce_allocation": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "workforce_production": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "typeID"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "SovereigntyUpgradesFuel": {
+            "type": "object",
+            "properties": {
+                "hourly_upkeep": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "startup_cost": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "type_id": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}

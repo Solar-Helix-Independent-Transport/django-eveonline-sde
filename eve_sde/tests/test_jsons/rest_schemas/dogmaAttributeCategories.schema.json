@@ -1,0 +1,22 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "categoryID",
+    "type": "object",
+    "properties": {
+        "categoryID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "description": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "categoryID",
+        "name"
+    ],
+    "additionalProperties": false
+}

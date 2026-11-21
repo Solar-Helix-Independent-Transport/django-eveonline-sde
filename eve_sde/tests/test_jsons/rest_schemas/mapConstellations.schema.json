@@ -1,0 +1,102 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "constellationID",
+    "type": "object",
+    "properties": {
+        "constellationID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "factionID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "name": {
+            "$ref": "#/$defs/Localized"
+        },
+        "position": {
+            "$ref": "#/$defs/MapConstellationsPosition"
+        },
+        "regionID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "solarSystemIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "wormholeClassID": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "constellationID",
+        "name",
+        "position",
+        "regionID",
+        "solarSystemIDs"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        },
+        "MapConstellationsPosition": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "y": {
+                    "type": "number",
+                    "format": "double"
+                },
+                "z": {
+                    "type": "number",
+                    "format": "double"
+                }
+            },
+            "required": [
+                "x",
+                "y",
+                "z"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

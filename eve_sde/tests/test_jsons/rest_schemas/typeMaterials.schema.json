@@ -1,0 +1,71 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "typeID",
+    "type": "object",
+    "properties": {
+        "typeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "materials": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/TypeMaterialsMaterials"
+            }
+        },
+        "randomizedMaterials": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/TypeMaterialsRandomizedMaterials"
+            }
+        }
+    },
+    "required": [
+        "typeID",
+        "materials"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "TypeMaterialsMaterials": {
+            "type": "object",
+            "properties": {
+                "materialTypeID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "materialTypeID",
+                "quantity"
+            ],
+            "additionalProperties": false
+        },
+        "TypeMaterialsRandomizedMaterials": {
+            "type": "object",
+            "properties": {
+                "materialTypeID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "quantityMax": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "quantityMin": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "materialTypeID",
+                "quantityMax",
+                "quantityMin"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

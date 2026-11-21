@@ -100,7 +100,8 @@ class FreelanceJobSchema(JSONModel):
     @classmethod
     def from_jsonl(cls, json_data, name_lookup=False):
         _out = []
-        for ob in json_data.get("_value", []):
+        # REST names the zip's _value "schemas"
+        for ob in json_data.get("schemas", json_data.get("_value", [])):
             _model = cls.map_to_model(ob, name_lookup=name_lookup, pk=True)
             _model.extra_config = {k: ob[k] for k in cls._EXTRA_CONFIG_KEYS if k in ob}
             _out.append(_model)
@@ -179,7 +180,8 @@ class FreelanceJobSchemaParameter(JSONModel):
     @classmethod
     def from_jsonl(cls, json_data, name_lookup=False):
         _out = []
-        for job in json_data.get("_value", []):
+        # REST names the zip's _value "schemas"
+        for job in json_data.get("schemas", json_data.get("_value", [])):
             schema_key = job.get("_key")
             for p in job.get("parameters", []):
                 kind = next((k for k in cls._KINDS if k in p), None)
@@ -194,7 +196,8 @@ class FreelanceJobSchemaParameter(JSONModel):
                     "_key": cls.build_pk(schema_key, p.get("_key")),
                 })
                 _model = cls.map_to_model(merged, name_lookup=name_lookup, pk=True)
-                _model.raw = p
+                # the zip's shape whatever the source: REST names `_key` "key" too
+                _model.raw = {k: v for k, v in p.items() if k != "key"}
                 _out.append(_model)
         return _out
 

@@ -1,0 +1,108 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "typeListID",
+    "type": "object",
+    "properties": {
+        "typeListID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "displayDescription": {
+            "$ref": "#/$defs/Localized"
+        },
+        "displayName": {
+            "$ref": "#/$defs/Localized"
+        },
+        "excludedCategoryIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "excludedGroupIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "excludedTypeIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "includedCategoryIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "includedGroupIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "includedTypeIDs": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "format": "int32"
+            }
+        },
+        "name": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "typeListID",
+        "excludedCategoryIDs",
+        "excludedGroupIDs",
+        "excludedTypeIDs",
+        "includedCategoryIDs",
+        "includedGroupIDs",
+        "includedTypeIDs",
+        "name"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

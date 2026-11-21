@@ -1,0 +1,119 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "skillPlanID",
+    "type": "object",
+    "properties": {
+        "skillPlanID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "careerPathID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "description": {
+            "$ref": "#/$defs/Localized"
+        },
+        "factionID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "internalName": {
+            "type": "string"
+        },
+        "milestones": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/SkillPlansMilestones"
+            }
+        },
+        "name": {
+            "$ref": "#/$defs/Localized"
+        },
+        "npcCorporationDivision": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "skillRequirements": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/SkillPlansSkillRequirements"
+            }
+        }
+    },
+    "required": [
+        "skillPlanID",
+        "skillRequirements"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        },
+        "SkillPlansMilestones": {
+            "type": "object",
+            "properties": {
+                "level": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "typeID": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "typeID"
+            ],
+            "additionalProperties": false
+        },
+        "SkillPlansSkillRequirements": {
+            "type": "object",
+            "properties": {
+                "level": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "typeID": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            },
+            "required": [
+                "level",
+                "typeID"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

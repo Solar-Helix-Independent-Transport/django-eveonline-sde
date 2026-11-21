@@ -12,3 +12,7 @@ class EveSDESection(models.Model):
     import_fingerprint = models.CharField(max_length=64, blank=True, default="")
     # pks the last load found missing from the SDE, deleted at the end of the update
     removed_pks = models.JSONField(default=list, blank=True)
+    # REST release this section was last brought up to, None when the last load came from the zip
+    release = models.CharField(max_length=32, null=True, blank=True, default=None)
+    # {table: version hash} for this section's own table and its depends_on tables, from that release
+    versions = models.JSONField(default=dict, blank=True)

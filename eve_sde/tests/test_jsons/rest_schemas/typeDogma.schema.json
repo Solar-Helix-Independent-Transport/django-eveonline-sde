@@ -1,0 +1,66 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "typeID",
+    "type": "object",
+    "properties": {
+        "typeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "dogmaAttributes": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/TypeDogmaDogmaAttributes"
+            }
+        },
+        "dogmaEffects": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/TypeDogmaDogmaEffects"
+            }
+        }
+    },
+    "required": [
+        "typeID",
+        "dogmaAttributes",
+        "dogmaEffects"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "TypeDogmaDogmaAttributes": {
+            "type": "object",
+            "properties": {
+                "attributeID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "value": {
+                    "type": "number",
+                    "format": "double"
+                }
+            },
+            "required": [
+                "attributeID",
+                "value"
+            ],
+            "additionalProperties": false
+        },
+        "TypeDogmaDogmaEffects": {
+            "type": "object",
+            "properties": {
+                "effectID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "effectID",
+                "isDefault"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

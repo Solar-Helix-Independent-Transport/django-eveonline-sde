@@ -20,8 +20,10 @@ from eve_sde.sde_tasks import (
     delete_removed_rows,
     delete_sde_folder,
     download_extract_sde,
+    fetch_sde_for_plan,
     finish_sde_update,
-    get_latest_sde,
+    get_sde_release,
+    get_sde_target,
     log_sde_plan,
     plan_sde_update,
     process_from_sde,
@@ -94,24 +96,26 @@ def check_for_sde_updates(self):
 )
 def update_models_from_sde(self, start_id: int = 0, full: bool = False):
     if ESDE_TASK_SPLIT:
-        latest = get_latest_sde()
+        target, latest = get_sde_target()
         build = latest.get("buildNumber")
-        plan = plan_sde_update(build, full=full)
+        plan = plan_sde_update(target, full=full)
         log_sde_plan(build, plan)
         if not plan:
             # nothing to load, don't download anything
             finish_sde_update(plan, latest)
             return
+        # every task works on the same REST release, or zip build
+        release = latest.get("release")
+        to_load = [_id for _id in plan if _id >= start_id]
         queue = [
-            fetch_sde.si(build),
+            fetch_sde.si(release or build, to_load),
         ]
-        for id in plan:
-            if id >= start_id:
-                queue.append(
-                    process_sde_section.si(id)
-                )
+        for id in to_load:
+            queue.append(
+                process_sde_section.si(id)
+            )
         queue.append(
-            cleanup_sde.si(list(plan))
+            cleanup_sde.si(list(plan), release)
         )
         chain(queue).apply_async(link_error=cleanup_sde_after_failure.s())
     else:
@@ -131,19 +135,29 @@ def process_sde_section(self, id: int = 0):
     base=TaskLockBase,
     **NETWORK_RETRY_KWARGS,
 )
-def fetch_sde(self, build: int = None):
-    download_extract_sde(build)
+def fetch_sde(self, target=None, plan: list = None):
+    """`target` is a REST release name, or a zip build number (None for the latest zip)."""
+    if isinstance(target, str):
+        fetch_sde_for_plan(get_sde_release(target), {_id: None for _id in plan or ()})
+    else:
+        download_extract_sde(target)
 
 
 @shared_task(
     bind=True,
     base=TaskLockBase,
+    **NETWORK_RETRY_KWARGS,
 )
-def cleanup_sde(self, plan: list = None):
+def cleanup_sde(self, plan: list = None, release: str = None):
+    # fetched first, so a network failure retries before anything is changed
+    index = get_sde_release(release) if plan is not None and release else None
     delete_removed_rows()
     if plan is None:
         # queued before selective updates, every model was loaded
         set_sde_version()
+    elif index:
+        # the skipped models are current at the release the chain loaded
+        finish_sde_update(plan, index)
     else:
         finish_sde_update(plan)
     delete_sde_folder()

@@ -1,0 +1,115 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-sde-key": "attributeID",
+    "type": "object",
+    "properties": {
+        "attributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "attributeCategoryID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "chargeRechargeTimeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "dataType": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "defaultValue": {
+            "type": "number",
+            "format": "double"
+        },
+        "description": {
+            "type": "string"
+        },
+        "displayName": {
+            "$ref": "#/$defs/Localized"
+        },
+        "displayWhenZero": {
+            "type": "boolean"
+        },
+        "highIsGood": {
+            "type": "boolean"
+        },
+        "iconID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "maxAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "minAttributeID": {
+            "type": "integer",
+            "format": "int32"
+        },
+        "name": {
+            "type": "string"
+        },
+        "published": {
+            "type": "boolean"
+        },
+        "stackable": {
+            "type": "boolean"
+        },
+        "tooltipDescription": {
+            "$ref": "#/$defs/Localized"
+        },
+        "tooltipTitle": {
+            "$ref": "#/$defs/Localized"
+        },
+        "unitID": {
+            "type": "integer",
+            "format": "int32"
+        }
+    },
+    "required": [
+        "attributeID",
+        "dataType",
+        "defaultValue",
+        "highIsGood",
+        "name",
+        "published",
+        "stackable"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "Localized": {
+            "type": "object",
+            "properties": {
+                "de": {
+                    "type": "string"
+                },
+                "en": {
+                    "type": "string"
+                },
+                "es": {
+                    "type": "string"
+                },
+                "fr": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

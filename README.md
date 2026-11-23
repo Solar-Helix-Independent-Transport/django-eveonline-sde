@@ -117,6 +117,8 @@ See `eve_sde/sde_types.txt` for an idea of the top level fields that are availab
       CELERYBEAT_SCHEDULE["EVE SDE :: Check for SDE Updates"] = {
           "task": "eve_sde.tasks.check_for_sde_updates",
           "schedule": crontab(minute="30"),
+          # When running Django EVEOnline SDE in Alliance Auth, add the next line!
+          "apply_offset": True,
       }
   ```
 
